@@ -702,12 +702,30 @@ export default function SurahPage() {
                       </div>
                     )}
 
-                    {/* Latin Transliteration Text */}
+                    {/* Latin / Transliteration Text — styled differently for ID vs EN */}
                     {showLatin && (
                       <div className="mb-4 text-left select-all">
-                        <p className="text-primary/90 font-sans text-sm sm:text-base font-normal leading-relaxed antialiased">
-                          {language === "id" ? ayah.teksLatin || ayah.transliteration : ayah.transliteration}
-                        </p>
+                        {language === "id" ? (
+                          /* Indonesian: NU-style Latin from equran.id */
+                          <div className="flex items-start gap-2">
+                            <span className="mt-0.5 shrink-0 rounded-md border border-primary/20 bg-primary-glow/50 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wide leading-none">
+                              Latin
+                            </span>
+                            <p className="text-primary/85 font-sans text-sm sm:text-base font-normal leading-relaxed antialiased italic">
+                              {ayah.teksLatin || ayah.transliteration || "—"}
+                            </p>
+                          </div>
+                        ) : (
+                          /* English: Academic transliteration from alquran.cloud */
+                          <div className="flex items-start gap-2">
+                            <span className="mt-0.5 shrink-0 rounded-md border border-accent/20 bg-accent-glow/50 px-1.5 py-0.5 text-[9px] font-bold text-accent uppercase tracking-wide leading-none">
+                              Translit.
+                            </span>
+                            <p className="text-accent/80 font-sans text-sm sm:text-base font-light leading-relaxed antialiased tracking-wide">
+                              {ayah.transliteration || "—"}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 

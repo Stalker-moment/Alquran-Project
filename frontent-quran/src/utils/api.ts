@@ -99,10 +99,11 @@ export async function getSurahDetails(
   useTajweed: boolean = false
 ): Promise<SurahDetail> {
   const arabicEdition = useTajweed ? "quran-tajweed" : "quran-uthmani";
-  const isIndoEd = translationEdition === "id.indonesian";
-  const editions = isIndoEd
-    ? `${arabicEdition},${translationEdition},${audioEdition}`
-    : `${arabicEdition},${translationEdition},${audioEdition},en.transliteration`;
+
+  // Always fetch en.transliteration as 4th edition regardless of translation
+  // → Indonesian UI uses teksLatin (equran.id / NU-style)
+  // → English UI uses transliteration (academic / alquran.cloud-style)
+  const editions = `${arabicEdition},${translationEdition},${audioEdition},en.transliteration`;
 
   // Fetch both Cloud API and equran.id in parallel
   const [cloudRes, equranRes] = await Promise.all([
@@ -123,7 +124,7 @@ export async function getSurahDetails(
   const arabicData = data[0];
   const translationData = data[1];
   const audioData = data[2];
-  const transliterationData = isIndoEd ? null : data[3];
+  const transliterationData = data[3]; // always index 3 — en.transliteration (academic style)
   const equranData = equranRes?.data;
 
   const combinedAyahs: Ayah[] = arabicData.ayahs.map((ayah: any, index: number) => {
@@ -139,7 +140,9 @@ export async function getSurahDetails(
       sajda: ayah.sajda,
       translation: translationData?.ayahs[index]?.text || "",
       audioUrl: audioData?.ayahs[index]?.audio || undefined,
+      // Academic transliteration — shown for English UI (e.g. "Al-ḥamdu lillāhi rabbi l-ʿālamīn")
       transliteration: transliterationData?.ayahs[index]?.text || "",
+      // NU-style Indonesian transliteration — shown for Indonesian UI (e.g. "Alhamdulillahi rabbil 'aalamin")
       teksLatin: equranData?.ayat[index]?.teksLatin || "",
     };
   });
