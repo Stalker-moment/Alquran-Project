@@ -1,0 +1,12 @@
+# AI Agent files — do not commit
+AGENTS.md
+CLAUDE.md
+.cursor/
+.gemini/
+.antigravity/
+.aider*
+.copilot/
+
+# OS
+.DS_Store
+Thumbs.db

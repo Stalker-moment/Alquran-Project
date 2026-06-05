@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc; /* Slate 50 */
+  --foreground: #0f172a; /* Slate 900 */
+  --card-bg: #ffffff;
+  --card-border: rgba(15, 23, 42, 0.08);
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --primary: #0f766e; /* Teal 700 */
+  --primary-glow: rgba(15, 118, 110, 0.1);
+  --accent: #d97706; /* Amber 600 */
+  --accent-glow: rgba(217, 119, 6, 0.1);
+  --muted: #64748b; /* Slate 500 */
+}
+
+/* Dark Theme */
+[data-theme='dark'] {
+  --background: #0b0f19; /* Deep Slate/Navy Blue */
+  --foreground: #f1f5f9; /* Slate 100 */
+  --card-bg: rgba(17, 24, 39, 0.7); /* Translucent dark gray */
+  --card-border: rgba(255, 255, 255, 0.06);
+  --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --primary: #2dd4bf; /* Teal 400 */
+  --primary-glow: rgba(45, 212, 191, 0.15);
+  --accent: #fbbf24; /* Amber 400 */
+  --accent-glow: rgba(251, 191, 36, 0.15);
+  --muted: #94a3b8; /* Slate 400 */
+}
+
+/* Sepia Theme (Designed for easy reading) */
+[data-theme='sepia'] {
+  --background: #f4ecd8; /* Warm antique cream */
+  --foreground: #433422; /* Dark coffee brown */
+  --card-bg: #faf4e8; /* Warm paper color */
+  --card-border: rgba(67, 52, 34, 0.08);
+  --card-shadow: 0 4px 6px -1px rgba(67, 52, 34, 0.04), 0 2px 4px -1px rgba(67, 52, 34, 0.02);
+  --primary: #854d0e; /* Ochre/Gold 800 */
+  --primary-glow: rgba(133, 77, 14, 0.1);
+  --accent: #c2410c; /* Cinnamon 700 */
+  --accent-glow: rgba(194, 65, 12, 0.1);
+  --muted: #7c6a59; /* Medium warm brown */
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-card-shadow: var(--card-shadow);
+  --color-primary: var(--primary);
+  --color-primary-glow: var(--primary-glow);
+  --color-accent: var(--accent);
+  --color-accent-glow: var(--accent-glow);
+  --color-muted: var(--muted);
+  
+  --font-sans: var(--font-outfit), system-ui, sans-serif;
+  --font-arabic: var(--font-amiri), serif;
+  --font-isyarat: 'QuranIsyarat', sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Custom animations helper classes */
+.glow-pulse {
+  animation: glowPulse 2s infinite ease-in-out;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--primary-glow), inset 0 0 4px var(--primary-glow);
+    border-color: var(--primary);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--primary-glow), inset 0 0 8px var(--primary-glow);
+    border-color: var(--primary);
+  }
+}
+
+/* Custom fonts styling override for readability */
+.arabic-text {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  line-height: 2.2;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background-color: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Tajweed Rule Color Highlighting */
+.tajweed-ghunnah {
+  color: #ec4899 !important; /* Pink-500 */
+}
+.tajweed-qalaqah {
+  color: #3b82f6 !important; /* Blue-500 */
+}
+.tajweed-ikhfa, .tajweed-ikhfa-shafawi {
+  color: #a855f7 !important; /* Purple-500 */
+}
+.tajweed-iqlab {
+  color: #f97316 !important; /* Orange-500 */
+}
+.tajweed-idgham, .tajweed-idgham-shafawi {
+  color: #10b981 !important; /* Emerald-500 */
+}
+.tajweed-madda-obligatory, .tajweed-madda-permissible, .tajweed-madda-normal {
+  color: #ef4444 !important; /* Red-500 */
+}
+.tajweed-ham-wasl {
+  opacity: 0.65;
+}
+.tajweed-silent, .tajweed-lam-shamsiyyah {
+  opacity: 0.4;
+}
+.tajweed-waqf {
+  color: #854d0e !important; /* Gold/Amber-800 */
+}
+.tajweed-tafkhim {
+  color: #0284c7 !important; /* Sky-600 */
+  font-weight: 600;
+}
+.tajweed-tarqiq {
+  color: #0f766e !important; /* Teal-700 */
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'QuranIsyarat';
+  src: url('/fonts/isyarat.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-isyarat {
+  font-family: var(--font-isyarat);
+  direction: rtl;
+  text-align: right;
+  line-height: 2.2;
+}
+
+/* ── Landing Page Utilities ──────────────────────────────────── */
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.bg-size-200 {
+  background-size: 200% 200%;
+}

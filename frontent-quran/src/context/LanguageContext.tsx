@@ -1,0 +1,254 @@
+"use client";
+
+import React, { createContext, useContext, useEffect, useState } from "react";
+
+export type LanguageType = "id" | "en";
+
+export const UI_TRANSLATIONS = {
+  id: {
+    appName: "Al-Qur'an Al-Kareem",
+    appSub: "Quran Viewer & Murottal",
+    surahList: "Daftar Surah",
+    searchPlaceholder: "Cari nama surah, arti, atau nomor (misal: 36, Al-Waqi'ah, Kiamat)...",
+    clear: "Hapus",
+    tryAgain: "Coba Lagi",
+    failedLoad: "Gagal memuat daftar Surah. Silakan coba beberapa saat lagi.",
+    notFound: "Surah tidak ditemukan",
+    notFoundSub: "Coba cari dengan kata kunci lain atau periksa ejaan Anda.",
+    ayat: "Ayat",
+    meccan: "Makkiyah",
+    medinan: "Madaniyah",
+    settingsTitle: "Pengaturan Membaca",
+    settingsClose: "Tutup",
+    translation: "Terjemahan",
+    reciter: "Qori / Murottal",
+    fontSize: "Ukuran Font",
+    fontArabic: "Arab",
+    fontTranslation: "Terjemahan",
+    autoScroll: "Auto-Scroll Murottal",
+    extras: "Fitur Tambahan",
+    backToSurahs: "Kembali ke Daftar Surah",
+    prevSurah: "Surah Sebelumnya",
+    nextSurah: "Surah Selanjutnya",
+    loadingDetails: "Gagal memuat detail surah. Periksa koneksi internet Anda.",
+    invalidSurah: "Nomor surah tidak valid.",
+    errorTitle: "Terjadi Kesalahan",
+    backToHome: "Kembali ke Beranda",
+    murottal: "Murottal",
+    ayahOf: "Ayat ke-{current} dari {total}",
+    playAyah: "Putar Audio Ayat",
+    copyAyah: "Salin Ayat & Terjemahan",
+    copied: "Tersalin!",
+    speed: "Kecepatan Putar",
+    mute: "Bisukan",
+    unmute: "Bunyikan",
+    themeLight: "Tema Terang",
+    themeSepia: "Tema Sepia",
+    themeDark: "Tema Gelap",
+    copyright: "© {year} Al-Qur'an Al-Kareem. Powered by Next.js & alquran.cloud.",
+    sumberApi: "Sumber API",
+    readListenTadabbur: "BACA • DENGAR • TADABBUR",
+    playSurah: "Putar Surah",
+    pauseSurah: "Jeda Surah",
+    readingMode: "Mode Baca",
+    language: "Bahasa Aplikasi",
+    floatingSettings: "Buka Pengaturan",
+    prevAyah: "Ayat Sebelumnya",
+    nextAyah: "Ayat Selanjutnya",
+    repeatNone: "Tidak Mengulang",
+    repeatAyah: "Ulangi Ayat",
+    repeatSurah: "Ulangi Surah",
+    heroTitle: "Temukan Kedamaian Dalam Membaca Al-Qur'an",
+    heroSubtitle: "Aplikasi mushaf Al-Qur'an modern yang dilengkapi dengan terjemahan multibahasa, audio murottal interaktif, dan auto-scroll untuk kemudahan tadarus Anda.",
+    showLatin: "Tampilkan Latin",
+    highlightTajweed: "Highlight Tajwid",
+    showIsyarat: "Tampilkan Isyarat",
+    theme: "Tema Tampilan",
+    themeCycle: "Ganti Tema",
+    lastRead: "Terakhir Dibaca",
+    bookmarksTitle: "Bookmark Saya",
+    tahfidzHelper: "Fitur Tahfidz & Ulang",
+    loopRange: "Ulang Rentang Ayat",
+    startAyah: "Ayat Mulai",
+    endAyah: "Ayat Selesai",
+    verseRepeat: "Ulang per Ayat",
+    searchAyahTab: "Pencarian Ayat (Global)",
+    searchSurahTab: "Daftar Surah",
+    searching: "Mencari ayat...",
+    noResults: "Tidak ada ayat yang cocok.",
+    resultsCount: "Ditemukan {count} ayat",
+    bookmarkSuccess: "Ditambahkan ke bookmark",
+    bookmarkRemoved: "Dihapus dari bookmark",
+    noBookmarks: "Belum ada bookmark ayat.",
+    lastReadNone: "Belum ada riwayat membaca.",
+    openQuran: "Buka Al-Qur'an",
+    surahListNav: "Daftar Surah",
+    landingHeroTitle: "Temukan Ketenangan Dalam Al-Qur'an",
+    landingHeroSubtitle: "Baca, dengarkan murottal, dan tadabbur Al-Qur'an dengan tampilan modern, transliterasi latin, dan fitur lengkap.",
+    landingHeroCta: "Mulai Membaca Sekarang",
+    landingHeroCtaSub: "Lihat Fitur",
+    landingQuoteTitle: "Ayat Pilihan",
+    landingQuoteLoading: "Memuat ayat...",
+    landingStatsTitle: "Dalam Angka",
+    landingStatsSurah: "Surah",
+    landingStatsAyat: "Ayat",
+    landingStatsLanguages: "Bahasa",
+    landingStatsReciters: "Qori",
+    landingFeaturesTitle: "Fitur Tersedia",
+    landingFeaturesSubtitle: "Semua yang Anda butuhkan untuk membaca Al-Qur'an dengan khusyuk",
+    landingComingSoonTitle: "Segera Hadir",
+    landingComingSoonSubtitle: "Fitur-fitur baru yang sedang dalam pengembangan aktif",
+    landingComingSoonBadge: "Segera",
+    landingCtaTitle: "Siap Memulai?",
+    landingCtaSubtitle: "Mulai perjalanan membaca Al-Qur'an Anda sekarang juga, gratis selamanya.",
+    landingCtaButton: "Buka Al-Qur'an"
+  },
+  en: {
+    appName: "Al-Qur'an Al-Kareem",
+    appSub: "Quran Viewer & Murottal",
+    surahList: "Surah List",
+    searchPlaceholder: "Search surah name, meaning, or number (e.g., 36, Al-Waqi'ah, Resurrection)...",
+    clear: "Clear",
+    tryAgain: "Try Again",
+    failedLoad: "Failed to load Surah list. Please try again in a few moments.",
+    notFound: "Surah not found",
+    notFoundSub: "Try searching with another keyword or check your spelling.",
+    ayat: "Verses",
+    meccan: "Meccan",
+    medinan: "Medinan",
+    settingsTitle: "Reading Settings",
+    settingsClose: "Close",
+    translation: "Translation",
+    reciter: "Reciter / Murottal",
+    fontSize: "Font Size",
+    fontArabic: "Arabic",
+    fontTranslation: "Translation",
+    autoScroll: "Murottal Auto-Scroll",
+    extras: "Extra Features",
+    backToSurahs: "Back to Surah List",
+    prevSurah: "Previous Surah",
+    nextSurah: "Next Surah",
+    loadingDetails: "Failed to load surah details. Please check your internet connection.",
+    invalidSurah: "Invalid surah number.",
+    errorTitle: "An Error Occurred",
+    backToHome: "Back to Home",
+    murottal: "Murottal",
+    ayahOf: "Verse {current} of {total}",
+    playAyah: "Play Verse Audio",
+    copyAyah: "Copy Verse & Translation",
+    copied: "Copied!",
+    speed: "Playback Speed",
+    mute: "Mute",
+    unmute: "Unmute",
+    themeLight: "Light Theme",
+    themeSepia: "Sepia Theme",
+    themeDark: "Dark Theme",
+    copyright: "© {year} Al-Qur'an Al-Kareem. Powered by Next.js & alquran.cloud.",
+    sumberApi: "API Source",
+    readListenTadabbur: "READ • LISTEN • REFLECT",
+    playSurah: "Play Surah",
+    pauseSurah: "Pause Surah",
+    readingMode: "Reading Mode",
+    language: "App Language",
+    floatingSettings: "Open Settings",
+    prevAyah: "Previous Verse",
+    nextAyah: "Next Verse",
+    repeatNone: "No Repeat",
+    repeatAyah: "Repeat Verse",
+    repeatSurah: "Repeat Surah",
+    heroTitle: "Discover Peace In Reading The Quran",
+    heroSubtitle: "A modern Quran application equipped with multi-language translations, interactive murottal audio, and auto-scroll to ease your recitation.",
+    showLatin: "Show Latin (Transliteration)",
+    highlightTajweed: "Highlight Tajweed",
+    showIsyarat: "Show Sign Language",
+    theme: "Reading Theme",
+    themeCycle: "Change Theme",
+    lastRead: "Last Read",
+    bookmarksTitle: "My Bookmarks",
+    tahfidzHelper: "Tahfidz & Repeat Settings",
+    loopRange: "Repeat Verse Range",
+    startAyah: "Start Verse",
+    endAyah: "End Verse",
+    verseRepeat: "Repeat per Verse",
+    searchAyahTab: "Verse Search (Global)",
+    searchSurahTab: "Surah List",
+    searching: "Searching verses...",
+    noResults: "No matching verses found.",
+    resultsCount: "Found {count} verses",
+    bookmarkSuccess: "Added to bookmarks",
+    bookmarkRemoved: "Removed from bookmarks",
+    noBookmarks: "No bookmarked verses yet.",
+    lastReadNone: "No reading history yet.",
+    openQuran: "Open Al-Qur'an",
+    surahListNav: "Surah List",
+    landingHeroTitle: "Find Peace and Serenity In The Quran",
+    landingHeroSubtitle: "Read, listen to murottal, and reflect on the Quran with a beautiful modern interface and complete features.",
+    landingHeroCta: "Start Reading Now",
+    landingHeroCtaSub: "See Features",
+    landingQuoteTitle: "Featured Verse",
+    landingQuoteLoading: "Loading verse...",
+    landingStatsTitle: "By The Numbers",
+    landingStatsSurah: "Surahs",
+    landingStatsAyat: "Verses",
+    landingStatsLanguages: "Languages",
+    landingStatsReciters: "Reciters",
+    landingFeaturesTitle: "Available Features",
+    landingFeaturesSubtitle: "Everything you need to read the Quran with focus and serenity",
+    landingComingSoonTitle: "Coming Soon",
+    landingComingSoonSubtitle: "New features currently in active development",
+    landingComingSoonBadge: "Soon",
+    landingCtaTitle: "Ready to Begin?",
+    landingCtaSubtitle: "Start your Quran reading journey right now, forever free.",
+    landingCtaButton: "Open Al-Qur'an"
+  }
+};
+
+interface LanguageContextProps {
+  language: LanguageType;
+  setLanguage: (lang: LanguageType) => void;
+  t: (key: keyof typeof UI_TRANSLATIONS.id, params?: Record<string, string | number>) => string;
+}
+
+const LanguageContext = createContext<LanguageContextProps | undefined>(undefined);
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguageState] = useState<LanguageType>("id");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const storedLang = localStorage.getItem("quran-lang") as LanguageType || "id";
+    setLanguageState(storedLang);
+    setMounted(true);
+  }, []);
+
+  const setLanguage = (lang: LanguageType) => {
+    setLanguageState(lang);
+    localStorage.setItem("quran-lang", lang);
+  };
+
+  const t = (key: keyof typeof UI_TRANSLATIONS.id, params?: Record<string, string | number>): string => {
+    let text = UI_TRANSLATIONS[language][key] || UI_TRANSLATIONS["id"][key] || String(key);
+    
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        text = text.replace(`{${k}}`, String(v));
+      });
+    }
+    
+    return text;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error("useLanguage must be used within a LanguageProvider");
+  }
+  return context;
+}
