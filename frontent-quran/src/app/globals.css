@@ -193,3 +193,64 @@ body {
 .bg-size-200 {
   background-size: 200% 200%;
 }
+
+/* Custom Day Phase Animations */
+.animate-spin-slow {
+  animation: custom-spin 15s linear infinite;
+}
+.animate-bounce-slow {
+  animation: custom-bounce 4s ease-in-out infinite;
+}
+@keyframes custom-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes custom-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ── CustomSelect Portal Dropdown Animation ─────────────── */
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.92) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+.animate-dropdown-in {
+  transform-origin: top;
+  animation: dropdown-in 0.18s cubic-bezier(.22,.61,.36,1) forwards;
+}
+
+/* ── Toast Progress Bar Animation ──────────────────────── */
+@keyframes toast-shrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+.animate-toast-shrink {
+  animation: toast-shrink 4.5s linear forwards;
+}
+
+/* ── Leaflet Map Dark Theme Fixes ───────────────────────── */
+.leaflet-container {
+  background: var(--background);
+  font-family: var(--font-outfit), sans-serif;
+}
+.leaflet-control-attribution {
+  background: var(--card-bg) !important;
+  color: var(--muted) !important;
+  font-size: 10px;
+}
+.leaflet-control-zoom a {
+  background: var(--card-bg) !important;
+  color: var(--foreground) !important;
+  border-color: var(--card-border) !important;
+}
+.leaflet-control-zoom a:hover {
+  background: var(--primary-glow) !important;
+  color: var(--primary) !important;
+}

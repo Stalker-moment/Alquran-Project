@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import SurahCard from "@/components/SurahCard";
-import { getSurahs, Surah } from "@/utils/api";
+import { getSurahs, Surah, JUZ_MAPPINGS } from "@/utils/api";
 import { useLanguage } from "@/context/LanguageContext";
 import { FaSearch, FaQuran, FaHeart } from "react-icons/fa";
 import { animate, stagger, utils } from "animejs";
@@ -14,6 +15,7 @@ export default function QuranPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"surah" | "juz">("surah");
 
   // Fetch Surahs on Mount
   useEffect(() => {
@@ -46,19 +48,44 @@ export default function QuranPage() {
     );
   });
 
-  // Stagger entry animation for Surah cards using Anime.js
+  // Filter Juz based on Search Query
+  const filteredJuz = JUZ_MAPPINGS.filter((juz) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      juz.juzNumber.toString() === query ||
+      `juz ${juz.juzNumber}`.includes(query) ||
+      juz.startSurah.toLowerCase().includes(query) ||
+      juz.endSurah.toLowerCase().includes(query) ||
+      juz.descriptionId.toLowerCase().includes(query) ||
+      juz.descriptionEn.toLowerCase().includes(query)
+    );
+  });
+
+  // Stagger entry animation for cards using Anime.js
   useEffect(() => {
-    if (!loading && filteredSurahs.length > 0) {
-      utils.remove(".surah-card-anim");
-      animate(".surah-card-anim", {
-        opacity: [0, 1],
-        translateY: [24, 0],
-        delay: stagger(30, { start: 50 }),
-        duration: 700,
-        ease: "outQuint",
-      });
+    if (!loading) {
+      if (activeTab === "surah" && filteredSurahs.length > 0) {
+        utils.remove(".surah-card-anim");
+        animate(".surah-card-anim", {
+          opacity: [0, 1],
+          translateY: [24, 0],
+          delay: stagger(30, { start: 50 }),
+          duration: 700,
+          ease: "outQuint",
+        });
+      } else if (activeTab === "juz" && filteredJuz.length > 0) {
+        utils.remove(".juz-card-anim");
+        animate(".juz-card-anim", {
+          opacity: [0, 1],
+          translateY: [24, 0],
+          delay: stagger(30, { start: 50 }),
+          duration: 700,
+          ease: "outQuint",
+        });
+      }
     }
-  }, [loading, searchQuery, surahs, filteredSurahs.length]);
+  }, [loading, searchQuery, surahs, filteredSurahs.length, activeTab, filteredJuz.length]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -92,13 +119,13 @@ export default function QuranPage() {
         </div>
 
         {/* Search Bar Section */}
-        <div className="relative max-w-xl mx-auto mb-12">
+        <div className="relative max-w-xl mx-auto mb-8">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
             <FaSearch className="h-4 w-4 text-muted" />
           </div>
           <input
             type="text"
-            placeholder={t("searchPlaceholder")}
+            placeholder={activeTab === "surah" ? t("searchPlaceholder") : (language === "id" ? "Cari nomor juz atau nama surah..." : "Search juz number or surah name...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-2xl border border-card-border bg-card-bg/60 py-4.5 pl-11 pr-4 text-base text-foreground shadow-xs transition-all duration-300 placeholder:text-muted focus:border-primary/80 focus:bg-card-bg focus:ring-2 focus:ring-primary-glow focus:outline-hidden"
@@ -111,6 +138,38 @@ export default function QuranPage() {
               {t("clear")}
             </button>
           )}
+        </div>
+
+        {/* Tabs Section */}
+        <div className="flex justify-center gap-3 mb-10 select-none">
+          <button
+            onClick={() => {
+              setActiveTab("surah");
+              setSearchQuery("");
+            }}
+            className={`px-5 py-3 rounded-2xl border text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 ${
+              activeTab === "surah"
+                ? "bg-primary border-primary text-white shadow-lg shadow-primary-glow"
+                : "border-card-border bg-card-bg/40 text-muted hover:text-foreground hover:bg-card-bg/60"
+            }`}
+          >
+            <FaQuran className="h-4 w-4" />
+            <span>{t("surahListNav")}</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("juz");
+              setSearchQuery("");
+            }}
+            className={`px-5 py-3 rounded-2xl border text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 ${
+              activeTab === "juz"
+                ? "bg-primary border-primary text-white shadow-lg shadow-primary-glow"
+                : "border-card-border bg-card-bg/40 text-muted hover:text-foreground hover:bg-card-bg/60"
+            }`}
+          >
+            <span>🗂️</span>
+            <span>{language === "id" ? "Daftar Juz" : "Juz List"}</span>
+          </button>
         </div>
 
         {/* Error State */}
@@ -147,8 +206,8 @@ export default function QuranPage() {
           </div>
         )}
 
-        {/* Empty Search State */}
-        {!loading && filteredSurahs.length === 0 && !error && (
+        {/* Empty Search State for Surah */}
+        {!loading && activeTab === "surah" && filteredSurahs.length === 0 && !error && (
           <div className="text-center py-16 border border-dashed border-card-border rounded-2xl">
             <FaQuran className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-bold text-foreground mb-1">{t("notFound")}</h3>
@@ -156,8 +215,21 @@ export default function QuranPage() {
           </div>
         )}
 
+        {/* Empty Search State for Juz */}
+        {!loading && activeTab === "juz" && filteredJuz.length === 0 && !error && (
+          <div className="text-center py-16 border border-dashed border-card-border rounded-2xl">
+            <span className="text-4xl block mb-4 opacity-55">🗂️</span>
+            <h3 className="text-lg font-bold text-foreground mb-1">
+              {language === "id" ? "Juz tidak ditemukan" : "Juz not found"}
+            </h3>
+            <p className="text-sm text-muted">
+              {language === "id" ? "Coba kata kunci atau nomor Juz lain." : "Try another keyword or Juz number."}
+            </p>
+          </div>
+        )}
+
         {/* Surahs Grid */}
-        {!loading && filteredSurahs.length > 0 && (
+        {!loading && activeTab === "surah" && filteredSurahs.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredSurahs.map((surah) => (
               <div
@@ -167,6 +239,44 @@ export default function QuranPage() {
                 <SurahCard surah={surah} />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Juz Grid */}
+        {!loading && activeTab === "juz" && filteredJuz.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredJuz.map((juz) => {
+              const displayRange = language === "id" ? juz.descriptionId : juz.descriptionEn;
+              return (
+                <Link
+                  key={juz.juzNumber}
+                  href={`/juz/${juz.juzNumber}`}
+                  className="juz-card-anim opacity-0 group relative flex items-center justify-between overflow-hidden rounded-2xl border border-card-border bg-card-bg p-5.5 shadow-card-shadow transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary-glow cursor-pointer"
+                >
+                  <div className="absolute inset-0 -z-10 bg-linear-to-br from-primary-glow/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center font-bold text-sm text-foreground transition-all duration-300 group-hover:bg-primary-glow group-hover:text-primary">
+                      <div className="absolute inset-0 rotate-45 rounded-lg border-2 border-card-border/80 transition-all duration-300 group-hover:rotate-90 group-hover:border-primary/50" />
+                      <span className="relative z-10">{juz.juzNumber}</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors duration-300 truncate">
+                        Juz {juz.juzNumber}
+                      </h3>
+                      <span className="text-xs text-muted truncate">
+                        {displayRange}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center shrink-0 ml-3">
+                    <span className="text-xs font-bold text-primary group-hover:translate-x-1 transition-transform duration-300 flex items-center gap-1 select-none">
+                      {language === "id" ? "Buka" : "Open"}
+                      <span className="text-[10px]">▶</span>
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </main>

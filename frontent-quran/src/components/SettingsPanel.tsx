@@ -48,6 +48,7 @@ export default function SettingsPanel({
 }: SettingsPanelProps) {
   const { language, setLanguage, t } = useLanguage();
   const [theme, setTheme] = useState<"light" | "dark" | "sepia">("dark");
+  const [autoTheme, setAutoTheme] = useState<boolean>(false);
   const [isTranslationOpen, setIsTranslationOpen] = useState(false);
   const [isReciterOpen, setIsReciterOpen] = useState(false);
 
@@ -55,6 +56,8 @@ export default function SettingsPanel({
     if (isOpen && typeof window !== "undefined") {
       const storedTheme = localStorage.getItem("quran-theme") as "light" | "dark" | "sepia" || "dark";
       setTheme(storedTheme);
+      const storedAutoTheme = localStorage.getItem("quran-auto-theme") === "true";
+      setAutoTheme(storedAutoTheme);
     }
     setIsTranslationOpen(false);
     setIsReciterOpen(false);
@@ -64,6 +67,20 @@ export default function SettingsPanel({
     setTheme(newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
     localStorage.setItem("quran-theme", newTheme);
+    setAutoTheme(false);
+    localStorage.setItem("quran-auto-theme", "false");
+  };
+
+  const handleAutoThemeToggle = (val: boolean) => {
+    setAutoTheme(val);
+    localStorage.setItem("quran-auto-theme", String(val));
+    if (val) {
+      const hour = new Date().getHours();
+      const targetTheme = (hour >= 18 || hour < 6) ? "dark" : "light";
+      setTheme(targetTheme);
+      document.documentElement.setAttribute("data-theme", targetTheme);
+      localStorage.setItem("quran-theme", targetTheme);
+    }
   };
 
   // Prevent scroll behind the drawer when open
@@ -144,7 +161,34 @@ export default function SettingsPanel({
               <FaSun className="text-primary h-3.5 w-3.5" />
               {t("theme")}
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            
+            {/* Auto Theme Toggle */}
+            <button
+              onClick={() => handleAutoThemeToggle(!autoTheme)}
+              className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-xs font-medium transition-all duration-300 cursor-pointer ${
+                autoTheme
+                  ? "border-primary bg-primary-glow text-primary"
+                  : "border-card-border bg-background/50 text-muted hover:text-foreground hover:bg-card-bg/60"
+              }`}
+            >
+              <div className="text-left">
+                <span className="block font-bold">{t("autoTheme")}</span>
+                <span className="block text-[10px] text-muted leading-tight mt-0.5 max-w-[180px]">{t("autoThemeDesc")}</span>
+              </div>
+              <div
+                className={`relative flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300 p-0.5 ${
+                  autoTheme ? "bg-primary" : "bg-card-border"
+                }`}
+              >
+                <div
+                  className={`h-4 w-4 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    autoTheme ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </button>
+
+            <div className="grid grid-cols-3 gap-2 mt-1">
               <button
                 onClick={() => handleThemeChange("light")}
                 className={`py-2 rounded-xl border text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1 ${

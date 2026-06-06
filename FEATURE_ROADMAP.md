@@ -22,6 +22,9 @@
 - [x] Navigasi Surah & Ayah custom dropdown
 - [x] Responsive mobile + desktop
 - [x] Nama & terjemahan surah dalam Bahasa Indonesia
+- [x] Navigasi Juz 1–30 (tab list & reader page)
+- [x] Auto Dark Mode Berdasarkan Waktu
+- [x] 📊 Progress Tadarus Tracker
 
 ---
 
@@ -33,7 +36,7 @@
 
 ---
 
-#### 1. 🗂️ Halaman Navigasi Juz
+#### 1. [Done] 🗂️ Halaman Navigasi Juz
 **Deskripsi:** Navigasi berdasarkan Juz 1–30, tidak hanya per surah.
 
 **Detail implementasi:**
@@ -51,7 +54,7 @@
 
 ---
 
-#### 2. 📊 Progress Tadarus Tracker
+#### 2. [Done] 📊 Progress Tadarus Tracker
 **Deskripsi:** Visualisasi berapa persen Al-Qur'an sudah dibaca oleh user.
 
 **Detail implementasi:**
@@ -135,7 +138,7 @@
 
 ---
 
-#### 6. 🌙 Auto Dark Mode Berdasarkan Waktu
+#### 6. [Done] 🌙 Auto Dark Mode Berdasarkan Waktu
 **Deskripsi:** Tema otomatis berganti berdasarkan jam (siang = light, malam = dark).
 
 **Detail implementasi:**

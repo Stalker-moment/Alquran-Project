@@ -15,6 +15,7 @@ import { animate } from "animejs";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface PlayerAyah {
+  number?: number;
   numberInSurah: number;
   audioUrl?: string;
 }
@@ -185,7 +186,9 @@ export default function AudioPlayer({
     const currentAyah = ayahs[currentAyahIndex];
     if (!currentAyah) return;
 
-    const element = document.getElementById(`ayah-${currentAyah.numberInSurah}`);
+    const element = currentAyah.number 
+      ? (document.getElementById(`ayah-${currentAyah.number}`) || document.getElementById(`ayah-${currentAyah.numberInSurah}`))
+      : document.getElementById(`ayah-${currentAyah.numberInSurah}`);
     if (element) {
       const elementRect = element.getBoundingClientRect();
       const absoluteElementTop = elementRect.top + window.scrollY;

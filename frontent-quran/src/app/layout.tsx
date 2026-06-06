@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Amiri, Outfit } from "next/font/google";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { ToastProvider } from "@/context/ToastContext";
+import ToastContainer from "@/components/Toast";
 import "./globals.css";
 
 const amiri = Amiri({
@@ -32,10 +34,17 @@ export default function RootLayout({
       lang="id"
       className={`${outfit.variable} ${amiri.variable} h-full antialiased`}
       data-theme="dark"
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
+      <body
+        className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300"
+        suppressHydrationWarning
+      >
         <LanguageProvider>
-          {children}
+          <ToastProvider>
+            {children}
+            <ToastContainer />
+          </ToastProvider>
         </LanguageProvider>
       </body>
     </html>

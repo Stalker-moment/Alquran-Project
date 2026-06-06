@@ -7,7 +7,8 @@ import { animate, stagger, utils } from "animejs";
 import Navbar from "@/components/Navbar";
 import SettingsPanel from "@/components/SettingsPanel";
 import AudioPlayer from "@/components/AudioPlayer";
-import { getSurahDetails, SurahDetail, getSurahs, Surah } from "@/utils/api";
+import { getSurahDetails, SurahDetail, getSurahs, Surah, getSurahTafsir } from "@/utils/api";
+import { updateSurahProgress } from "@/utils/progress";
 import { useLanguage } from "@/context/LanguageContext";
 import { FaChevronLeft, FaPlay, FaPause, FaRegCopy, FaCheck, FaSlidersH, FaBookmark, FaRegBookmark } from "react-icons/fa";
 
@@ -102,6 +103,11 @@ export default function SurahPage() {
   const [surahDetail, setSurahDetail] = useState<SurahDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // States for Tafsir
+  const [activeTab, setActiveTab] = useState<"baca" | "tafsir">("baca");
+  const [tafsirDetail, setTafsirDetail] = useState<any>(null);
+  const [loadingTafsir, setLoadingTafsir] = useState<boolean>(false);
 
   // States for Reading Settings
   const [arabicSize, setArabicSize] = useState<number>(36);
@@ -235,6 +241,8 @@ export default function SurahPage() {
         setCurrentAyahIndex(0);
         setIsPlaying(false);
         setHasStartedAudio(false);
+        setActiveTab("baca");
+        setTafsirDetail(null);
         
         const data = await getSurahDetails(surahNumber, selectedTranslation, selectedReciter, useTajweed);
         setSurahDetail(data);
@@ -248,6 +256,24 @@ export default function SurahPage() {
     }
     loadSurah();
   }, [surahNumber, selectedTranslation, selectedReciter, useTajweed]); // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  // Fetch Tafsir when tab changes
+  useEffect(() => {
+    async function loadTafsir() {
+      if (activeTab === "tafsir" && surahNumber && !tafsirDetail) {
+        try {
+          setLoadingTafsir(true);
+          const data = await getSurahTafsir(surahNumber);
+          setTafsirDetail(data);
+        } catch (err) {
+          console.error("Failed to load tafsir:", err);
+        } finally {
+          setLoadingTafsir(false);
+        }
+      }
+    }
+    loadTafsir();
+  }, [activeTab, surahNumber, tafsirDetail]);
 
   // Stagger entry animation for Ayah cards using Anime.js
   useEffect(() => {
@@ -263,7 +289,7 @@ export default function SurahPage() {
     }
   }, [loading, surahDetail]);
 
-  // Save Last Read position
+  // Save Last Read position & update progress
   useEffect(() => {
     if (!loading && surahDetail) {
       localStorage.setItem("quran-last-read", JSON.stringify({
@@ -273,6 +299,8 @@ export default function SurahPage() {
         ayahNumber: currentAyahIndex + 1,
         timestamp: Date.now()
       }));
+      // Update Tadarus Progress
+      updateSurahProgress(surahDetail.number, currentAyahIndex + 1);
     }
   }, [loading, surahDetail, currentAyahIndex]);
 
@@ -581,167 +609,271 @@ export default function SurahPage() {
               </button>
             </div>
 
-            {/* Bismillah Header (if applicable) */}
-            {showBismillahHeader && (
-              <div className="text-center py-6">
-                <p className="font-arabic text-3xl md:text-4xl text-foreground select-none">
-                  بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-                </p>
-              </div>
-            )}
+            {/* Tabs Selector: Baca Ayat vs Tafsir */}
+            <div className="flex justify-center border-b border-card-border/60 pb-px mb-6 gap-6">
+              <button
+                onClick={() => setActiveTab("baca")}
+                className={`pb-3 text-sm font-bold transition-all border-b-2 relative cursor-pointer ${
+                  activeTab === "baca"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted hover:text-foreground"
+                }`}
+              >
+                {t("bacaTab")}
+              </button>
+              <button
+                onClick={() => setActiveTab("tafsir")}
+                className={`pb-3 text-sm font-bold transition-all border-b-2 relative cursor-pointer ${
+                  activeTab === "tafsir"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted hover:text-foreground"
+                }`}
+              >
+                {t("tafsirTab")}
+              </button>
+            </div>
 
-            {/* Ayahs List */}
-            <div className="space-y-6">
-              {surahDetail.ayahs.map((ayah, index) => {
-                const isActive = currentAyahIndex === index && isPlaying;
-                
-                // Clean up Bismillah from the first verse text if it starts with it (except for Surah Fatihah 1:1)
-                let renderedArabic = ayah.text;
-                if (surahNumber !== 1 && index === 0 && renderedArabic.startsWith("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ")) {
-                  renderedArabic = renderedArabic.replace("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", "").trim();
-                }
+            {activeTab === "baca" ? (
+              <>
+                {/* Bismillah Header (if applicable) */}
+                {showBismillahHeader && (
+                  <div className="text-center py-6">
+                    <p className="font-arabic text-3xl md:text-4xl text-foreground select-none">
+                      بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+                    </p>
+                  </div>
+                )}
 
-                return (
-                  <div
-                    key={ayah.number}
-                    id={`ayah-${ayah.numberInSurah}`}
-                    className={`ayah-card-anim opacity-0 rounded-2xl border p-6 md:p-8 transition-all duration-300 ${
-                      isActive
-                        ? "border-primary/60 bg-primary-glow/20 shadow-md shadow-primary-glow glow-pulse"
-                        : "border-card-border bg-card-bg/50 hover:bg-card-bg hover:border-card-border/80"
-                    }`}
-                  >
-                    {/* Top Row: Ayah Info & Actions */}
-                    <div className="flex items-center justify-between gap-4 mb-6 select-none">
-                      {/* Verse Tag */}
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-card-border text-xs font-bold text-foreground">
-                        {surahNumber}:{ayah.numberInSurah}
-                      </div>
+                {/* Ayahs List */}
+                <div className="space-y-6">
+                  {surahDetail.ayahs.map((ayah, index) => {
+                    const isActive = currentAyahIndex === index && isPlaying;
+                    
+                    // Clean up Bismillah from the first verse text if it starts with it (except for Surah Fatihah 1:1)
+                    let renderedArabic = ayah.text;
+                    if (surahNumber !== 1 && index === 0 && renderedArabic.startsWith("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ")) {
+                      renderedArabic = renderedArabic.replace("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", "").trim();
+                    }
 
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-1.5">
-                        {/* Play Ayah */}
-                        <button
-                          onClick={() => handlePlayAyah(index)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                            isActive
-                              ? "bg-primary text-white"
-                              : "bg-card-border text-muted hover:text-primary hover:bg-primary-glow"
-                          }`}
-                          title={isActive ? t("pauseSurah") : t("playAyah")}
-                        >
-                          {isActive ? (
-                            <FaPause className="h-3 w-3" />
-                          ) : (
-                            <FaPlay className="h-3 w-3 translate-x-px" />
-                          )}
-                        </button>
-
-                        {/* Copy Ayah */}
-                        <button
-                          onClick={() => handleCopyAyah(ayah.text, ayah.translation, ayah.numberInSurah)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-card-border text-muted hover:text-primary hover:bg-primary-glow transition-colors"
-                          title={t("copyAyah")}
-                        >
-                          {copiedAyah === ayah.numberInSurah ? (
-                            <FaCheck className="h-3.5 w-3.5 text-green-500" />
-                          ) : (
-                            <FaRegCopy className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-
-                        {/* Bookmark Ayah */}
-                        <button
-                          onClick={() => handleToggleBookmark(ayah.numberInSurah)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                            bookmarks.some(b => b.surahNumber === surahNumber && b.ayahNumber === ayah.numberInSurah)
-                              ? "bg-primary text-white"
-                              : "bg-card-border text-muted hover:text-primary hover:bg-primary-glow"
-                          }`}
-                          title={t("bookmarksTitle")}
-                        >
-                          {bookmarks.some(b => b.surahNumber === surahNumber && b.ayahNumber === ayah.numberInSurah) ? (
-                            <FaBookmark className="h-3.5 w-3.5" />
-                          ) : (
-                            <FaRegBookmark className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Arabic Verse Text (renders HTML spans if Tajweed highlighting is enabled) */}
-                    <div 
-                      onClick={handleArabicTextClick}
-                      className="mb-6 text-right font-arabic selection:bg-primary-glow selection:text-primary"
-                    >
-                      {useTajweed ? (
-                        <p
-                          className="arabic-text text-foreground tracking-wide select-all cursor-help"
-                          style={{ fontSize: `${arabicSize}px` }}
-                          dangerouslySetInnerHTML={{ __html: parseTajweed(renderedArabic) }}
-                        />
-                      ) : (
-                        <p
-                          className="arabic-text text-foreground tracking-wide select-all"
-                          style={{ fontSize: `${arabicSize}px` }}
-                        >
-                          {renderedArabic}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Quran Isyarat (Sign Language) */}
-                    {showIsyarat && (
-                      <div className="mt-4 mb-6 text-right select-all">
-                        <p
-                          className="font-isyarat text-foreground/95 tracking-wide leading-loose"
-                          style={{ fontSize: `${arabicSize * 1.1}px` }}
-                        >
-                          {renderedArabic.replace(/\[[a-z](:\d+)?\[/g, "").replace(/\]/g, "")}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Latin / Transliteration Text — styled differently for ID vs EN */}
-                    {showLatin && (
-                      <div className="mb-4 text-left select-all">
-                        {language === "id" ? (
-                          /* Indonesian: NU-style Latin from equran.id */
-                          <div className="flex items-start gap-2">
-                            <span className="mt-0.5 shrink-0 rounded-md border border-primary/20 bg-primary-glow/50 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wide leading-none">
-                              Latin
-                            </span>
-                            <p className="text-primary/85 font-sans text-sm sm:text-base font-normal leading-relaxed antialiased italic">
-                              {ayah.teksLatin || ayah.transliteration || "—"}
-                            </p>
+                    return (
+                      <div
+                        key={ayah.number}
+                        id={`ayah-${ayah.numberInSurah}`}
+                        className={`ayah-card-anim opacity-0 rounded-2xl border p-6 md:p-8 transition-all duration-300 ${
+                          isActive
+                            ? "border-primary/60 bg-primary-glow/20 shadow-md shadow-primary-glow glow-pulse"
+                            : "border-card-border bg-card-bg/50 hover:bg-card-bg hover:border-card-border/80"
+                        }`}
+                      >
+                        {/* Top Row: Ayah Info & Actions */}
+                        <div className="flex items-center justify-between gap-4 mb-6 select-none">
+                          {/* Verse Tag */}
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-card-border text-xs font-bold text-foreground">
+                            {surahNumber}:{ayah.numberInSurah}
                           </div>
-                        ) : (
-                          /* English: Academic transliteration from alquran.cloud */
-                          <div className="flex items-start gap-2">
-                            <span className="mt-0.5 shrink-0 rounded-md border border-accent/20 bg-accent-glow/50 px-1.5 py-0.5 text-[9px] font-bold text-accent uppercase tracking-wide leading-none">
-                              Translit.
-                            </span>
-                            <p className="text-accent/80 font-sans text-sm sm:text-base font-light leading-relaxed antialiased tracking-wide">
-                              {ayah.transliteration || "—"}
+
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-1.5">
+                            {/* Play Ayah */}
+                            <button
+                              onClick={() => handlePlayAyah(index)}
+                              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                                isActive
+                                  ? "bg-primary text-white"
+                                  : "bg-card-border text-muted hover:text-primary hover:bg-primary-glow"
+                              }`}
+                              title={isActive ? t("pauseSurah") : t("playAyah")}
+                            >
+                              {isActive ? (
+                                <FaPause className="h-3 w-3" />
+                              ) : (
+                                <FaPlay className="h-3 w-3 translate-x-px" />
+                              )}
+                            </button>
+
+                            {/* Copy Ayah */}
+                            <button
+                              onClick={() => handleCopyAyah(ayah.text, ayah.translation, ayah.numberInSurah)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-card-border text-muted hover:text-primary hover:bg-primary-glow transition-colors"
+                              title={t("copyAyah")}
+                            >
+                              {copiedAyah === ayah.numberInSurah ? (
+                                <FaCheck className="h-3.5 w-3.5 text-green-500" />
+                              ) : (
+                                <FaRegCopy className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+
+                            {/* Bookmark Ayah */}
+                            <button
+                              onClick={() => handleToggleBookmark(ayah.numberInSurah)}
+                              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                                bookmarks.some(b => b.surahNumber === surahNumber && b.ayahNumber === ayah.numberInSurah)
+                                  ? "bg-primary text-white"
+                                  : "bg-card-border text-muted hover:text-primary hover:bg-primary-glow"
+                              }`}
+                              title={t("bookmarksTitle")}
+                            >
+                              {bookmarks.some(b => b.surahNumber === surahNumber && b.ayahNumber === ayah.numberInSurah) ? (
+                                <FaBookmark className="h-3.5 w-3.5" />
+                              ) : (
+                                <FaRegBookmark className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Arabic Verse Text (renders HTML spans if Tajweed highlighting is enabled) */}
+                        <div 
+                          onClick={handleArabicTextClick}
+                          className="mb-6 text-right font-arabic selection:bg-primary-glow selection:text-primary"
+                        >
+                          {useTajweed ? (
+                            <p
+                              className="arabic-text text-foreground tracking-wide select-all cursor-help"
+                              style={{ fontSize: `${arabicSize}px` }}
+                              dangerouslySetInnerHTML={{ __html: parseTajweed(renderedArabic) }}
+                            />
+                          ) : (
+                            <p
+                              className="arabic-text text-foreground tracking-wide select-all"
+                              style={{ fontSize: `${arabicSize}px` }}
+                            >
+                              {renderedArabic}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Quran Isyarat (Sign Language) */}
+                        {showIsyarat && (
+                          <div className="mt-4 mb-6 text-right select-all">
+                            <p
+                              className="font-isyarat text-foreground/95 tracking-wide leading-loose"
+                              style={{ fontSize: `${arabicSize * 1.1}px` }}
+                            >
+                              {renderedArabic.replace(/\[[a-z](:\d+)?\[/g, "").replace(/\]/g, "")}
                             </p>
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {/* Translation Text */}
-                    <div className="border-t border-card-border/60 pt-4 text-left select-all">
-                      <p
-                        className="text-foreground font-normal leading-relaxed selection:bg-primary-glow selection:text-primary"
-                        style={{ fontSize: `${translationSize}px` }}
-                      >
-                        {ayah.translation}
-                      </p>
-                    </div>
+                        {/* Latin / Transliteration Text — styled differently for ID vs EN */}
+                        {showLatin && (
+                          <div className="mb-4 text-left select-all">
+                            {language === "id" ? (
+                              /* Indonesian: NU-style Latin from equran.id */
+                              <div className="flex items-start gap-2">
+                                <span className="mt-0.5 shrink-0 rounded-md border border-primary/20 bg-primary-glow/50 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wide leading-none">
+                                  Latin
+                                </span>
+                                <p className="text-primary/85 font-sans text-sm sm:text-base font-normal leading-relaxed antialiased italic">
+                                  {ayah.teksLatin || ayah.transliteration || "—"}
+                                </p>
+                              </div>
+                            ) : (
+                              /* English: Academic transliteration from alquran.cloud */
+                              <div className="flex items-start gap-2">
+                                <span className="mt-0.5 shrink-0 rounded-md border border-accent/20 bg-accent-glow/50 px-1.5 py-0.5 text-[9px] font-bold text-accent uppercase tracking-wide leading-none">
+                                  Translit.
+                                </span>
+                                <p className="text-accent/80 font-sans text-sm sm:text-base font-light leading-relaxed antialiased tracking-wide">
+                                  {ayah.transliteration || "—"}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Translation Text */}
+                        <div className="border-t border-card-border/60 pt-4 text-left select-all">
+                          <p
+                            className="text-foreground font-normal leading-relaxed selection:bg-primary-glow selection:text-primary"
+                            style={{ fontSize: `${translationSize}px` }}
+                          >
+                            {ayah.translation}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              /* Tafsir View */
+              <div className="space-y-6 select-all">
+                {/* Description Banner */}
+                <div className="rounded-2xl border border-card-border bg-card-bg/40 p-6 md:p-8 text-center text-xs text-muted leading-relaxed">
+                  <p className="font-bold text-sm text-foreground mb-3">{t("deskripsiSurah")}</p>
+                  <div 
+                    className="max-w-2xl mx-auto text-sm text-muted leading-relaxed text-left md:text-center whitespace-pre-line"
+                    dangerouslySetInnerHTML={{ __html: tafsirDetail?.deskripsi || "..." }}
+                  />
+                  <div className="mt-4 border-t border-card-border/50 pt-4 text-[10px] uppercase font-bold tracking-wider text-primary">
+                    {t("tafsirSource")}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+
+                {/* Loading skeletons for Tafsir */}
+                {loadingTafsir && (
+                  <div className="space-y-5">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <div key={idx} className="animate-pulse rounded-2xl border border-card-border/50 bg-card-bg/20 p-6 space-y-4">
+                        <div className="h-5 bg-card-border rounded-sm w-16" />
+                        <div className="h-4 bg-card-border rounded-sm w-full" />
+                        <div className="h-4 bg-card-border rounded-sm w-5/6" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Tafsir List */}
+                {!loadingTafsir && tafsirDetail && (
+                  <div className="space-y-6">
+                    {tafsirDetail.tafsir.map((taf: any) => {
+                      const matchingAyah = surahDetail?.ayahs?.[taf.ayat - 1];
+                      return (
+                        <div
+                          key={taf.ayat}
+                          className="rounded-2xl border border-card-border bg-card-bg/50 p-6 md:p-8 hover:bg-card-bg hover:border-card-border/80 transition-all duration-300"
+                        >
+                          <div className="flex items-center justify-between border-b border-card-border/60 pb-3 mb-4 select-none">
+                            <span className="text-xs font-extrabold text-primary uppercase tracking-wider">
+                              QS. {surahDetail?.englishName} : {taf.ayat}
+                            </span>
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-card-border text-xs font-bold text-foreground">
+                              {taf.ayat}
+                            </div>
+                          </div>
+
+                          {matchingAyah && (
+                            <div className="mb-6 text-right font-arabic">
+                              <p 
+                                className="text-foreground leading-loose"
+                                style={{ fontSize: `${arabicSize * 0.85}px` }}
+                              >
+                                {matchingAyah.text}
+                              </p>
+                            </div>
+                          )}
+
+                          <div 
+                            className="text-left leading-relaxed text-foreground font-light whitespace-pre-line"
+                            style={{ fontSize: `${translationSize}px` }}
+                          >
+                            {taf.teks}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!loadingTafsir && !tafsirDetail && (
+                  <div className="text-center py-12 text-muted select-none border border-dashed border-card-border rounded-2xl">
+                    Gagal memuat data Tafsir. Silakan periksa koneksi internet Anda.
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
         )}
