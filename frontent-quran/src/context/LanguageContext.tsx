@@ -154,6 +154,7 @@ export const UI_TRANSLATIONS = {
     navCari: "Cari",
     navProgress: "Progress",
     navBookmark: "Bookmark",
+    navAsmaulHusna: "Asmaul Husna",
     wordHighlight: "Sorotan Kata demi Kata",
   },
   en: {
@@ -305,6 +306,7 @@ export const UI_TRANSLATIONS = {
     navCari: "Search",
     navProgress: "Progress",
     navBookmark: "Bookmarks",
+    navAsmaulHusna: "Asmaul Husna",
     wordHighlight: "Word-by-Word Highlight",
   }
 };

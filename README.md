@@ -35,6 +35,7 @@
 | 🗂️ **Navigasi Juz** | Navigasi berdasarkan Juz 1–30 dengan daftar Juz kustom di homepage |
 | 🌙 **Auto Dark Mode** | Ganti tema otomatis berdasarkan jam (18:00 - 06:00 tema gelap) |
 | ✨ **Word Highlight** | Sorotan kata demi kata secara real-time sinkron dengan audio murottal |
+| ☪️ **Asmaul Husna** | 99 nama Allah lengkap dengan arti 4 bahasa (ID, EN, TR, Urdu), keutamaan, dan referensi Qur'an |
 | 📱 **Responsive** | Optimal di mobile, tablet, dan desktop |
 | ⚡ **Pencarian Global** | Cari ayat berdasarkan kata kunci di seluruh Al-Qur'an |
 

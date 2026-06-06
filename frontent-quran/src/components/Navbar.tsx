@@ -119,6 +119,14 @@ export default function Navbar() {
             <FaBookmark className="h-3 w-3" />
             <span>{t("navBookmark")}</span>
           </Link>
+
+          <Link 
+            href="/asmaul-husna"
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
+          >
+            <span>☪️</span>
+            <span>{t("navAsmaulHusna")}</span>
+          </Link>
         </div>
 
         {/* Global Controls & Hamburger Toggle */}
@@ -252,6 +260,14 @@ export default function Navbar() {
           >
             <FaBookmark className="h-4 w-4 text-primary" />
             <span>{t("navBookmark")}</span>
+          </Link>
+          <Link
+            href="/asmaul-husna"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
+          >
+            <span className="text-base">☪️</span>
+            <span>{t("navAsmaulHusna")}</span>
           </Link>
         </div>
       )}

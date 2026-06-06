@@ -87,6 +87,14 @@ const ACTIVE_FEATURES: Feature[] = [
     desc_en: "Visually track your Quran reading progress, surah completion, and daily reading streaks.",
     gradient: "from-rose-500/20 to-pink-500/10",
   },
+  {
+    icon: <span className="text-lg">☪️</span>,
+    title_id: "Asmaul Husna",
+    title_en: "Asmaul Husna",
+    desc_id: "99 nama-nama Allah yang indah dengan arti dalam 4 bahasa (Indonesia, Inggris, Turki, Urdu), keutamaan, dan referensi Al-Qur'an.",
+    desc_en: "99 beautiful names of Allah with meanings in 4 languages (Indonesian, English, Turkish, Urdu), virtues, and Quran references.",
+    gradient: "from-amber-500/20 to-yellow-500/10",
+  },
 ];
 
 type ComingSoon = {
