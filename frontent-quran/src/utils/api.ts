@@ -613,31 +613,60 @@ export function getQuranComRecitationId(alquranCloudReciter: string): number {
 }
 
 /**
- * Fetch word-by-word timing segments from Quran.com API for a specific Surah
+ * Fetch word-by-word timing segments from Quran.com API for a specific Surah.
+ * Handles pagination — the API returns only 10 results per page by default.
  */
 export async function getSurahAudioSegments(
   recitationId: number,
   surahNumber: number
 ): Promise<Record<string, number[][]>> {
+  const result: Record<string, number[][]> = {};
+
+  const parsePageFiles = (audioFiles: any[]) => {
+    for (const file of audioFiles) {
+      if (file.verse_key && file.segments) {
+        result[file.verse_key] = file.segments;
+      }
+    }
+  };
+
   try {
-    const response = await fetchWithRetry(
-      `https://api.quran.com/api/v4/recitations/${recitationId}/by_chapter/${surahNumber}?fields=segments`
+    // Fetch first page
+    const firstRes = await fetchWithRetry(
+      `https://api.quran.com/api/v4/recitations/${recitationId}/by_chapter/${surahNumber}?fields=segments&per_page=50&page=1`
     );
-    if (!response.ok) {
-      throw new Error(`Failed to fetch segments for recitation ${recitationId} surah ${surahNumber}`);
-    }
-    const json = await response.json();
-    const result: Record<string, number[][]> = {};
-    if (json.audio_files) {
-      json.audio_files.forEach((file: any) => {
-        if (file.verse_key && file.segments) {
-          result[file.verse_key] = file.segments;
+    if (!firstRes.ok) throw new Error(`Segments fetch failed: ${firstRes.status}`);
+    const firstJson = await firstRes.json();
+
+    parsePageFiles(firstJson.audio_files || []);
+
+    const pagination = firstJson.pagination;
+    const totalPages: number = pagination?.total_pages ?? 1;
+
+    if (totalPages > 1) {
+      // Fetch remaining pages concurrently
+      const pagePromises = [];
+      for (let page = 2; page <= totalPages; page++) {
+        pagePromises.push(
+          fetchWithRetry(
+            `https://api.quran.com/api/v4/recitations/${recitationId}/by_chapter/${surahNumber}?fields=segments&per_page=50&page=${page}`
+          )
+            .then(res => (res.ok ? res.json() : null))
+            .catch(() => null)
+        );
+      }
+      const pages = await Promise.all(pagePromises);
+      for (const pageJson of pages) {
+        if (pageJson?.audio_files) {
+          parsePageFiles(pageJson.audio_files);
         }
-      });
+      }
     }
+
     return result;
   } catch (err) {
     console.error("Error fetching audio segments:", err);
     return {};
   }
 }
+
