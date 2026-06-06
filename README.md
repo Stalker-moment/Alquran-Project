@@ -34,6 +34,7 @@
 | 🌙 **Multi Tema** | Dark, Light, dan Sepia mode |
 | 🗂️ **Navigasi Juz** | Navigasi berdasarkan Juz 1–30 dengan daftar Juz kustom di homepage |
 | 🌙 **Auto Dark Mode** | Ganti tema otomatis berdasarkan jam (18:00 - 06:00 tema gelap) |
+| ✨ **Word Highlight** | Sorotan kata demi kata secara real-time sinkron dengan audio murottal |
 | 📱 **Responsive** | Optimal di mobile, tablet, dan desktop |
 | ⚡ **Pencarian Global** | Cari ayat berdasarkan kata kunci di seluruh Al-Qur'an |
 
@@ -222,7 +223,7 @@ Lihat file **[FEATURE_ROADMAP.md](./FEATURE_ROADMAP.md)** untuk detail lengkap 1
 - [x] 🗂️ Navigasi Juz 1–30
 - [x] 🌙 Auto Dark Mode Berdasarkan Waktu
 - [x] 📊 Progress Tadarus Tracker
-- ✨ Word-by-Word Audio Highlight
+- [x] ✨ Word-by-Word Audio Highlight
 - 🖥️ Mode Mushaf Full Screen
 - 📖 Tafsir Singkat per Ayat
 - 🧠 Mode Hafalan (Flashcard)

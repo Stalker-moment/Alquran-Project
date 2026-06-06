@@ -154,6 +154,7 @@ export const UI_TRANSLATIONS = {
     navCari: "Cari",
     navProgress: "Progress",
     navBookmark: "Bookmark",
+    wordHighlight: "Sorotan Kata demi Kata",
   },
   en: {
     appName: "Al-Qur'an Al-Kareem",
@@ -304,6 +305,7 @@ export const UI_TRANSLATIONS = {
     navCari: "Search",
     navProgress: "Progress",
     navBookmark: "Bookmarks",
+    wordHighlight: "Word-by-Word Highlight",
   }
 };
 

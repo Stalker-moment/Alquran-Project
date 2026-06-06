@@ -7,7 +7,7 @@ import { animate, stagger, utils } from "animejs";
 import Navbar from "@/components/Navbar";
 import SettingsPanel from "@/components/SettingsPanel";
 import AudioPlayer from "@/components/AudioPlayer";
-import { getSurahDetails, SurahDetail, getSurahs, Surah, getSurahTafsir } from "@/utils/api";
+import { getSurahDetails, SurahDetail, getSurahs, Surah, getSurahTafsir, getQuranComRecitationId, getSurahAudioSegments } from "@/utils/api";
 import { updateSurahProgress } from "@/utils/progress";
 import { useLanguage } from "@/context/LanguageContext";
 import { FaChevronLeft, FaPlay, FaPause, FaRegCopy, FaCheck, FaSlidersH, FaBookmark, FaRegBookmark } from "react-icons/fa";
@@ -93,6 +93,89 @@ function parseTajweed(text: string): string {
   return current;
 }
 
+interface WordToken {
+  text: string;
+  tajweedHtml: string;
+}
+
+function parseVerseWords(rawText: string): WordToken[] {
+  const words: WordToken[] = [];
+  let currentText = "";
+  let currentHtml = "";
+  
+  const ruleClassMap: Record<string, string> = {
+    h: "tajweed-ham-wasl",
+    s: "tajweed-silent",
+    l: "tajweed-lam-shamsiyyah",
+    n: "tajweed-madda-normal",
+    q: "tajweed-qalaqah",
+    g: "tajweed-ghunnah",
+    m: "tajweed-madda-obligatory",
+    o: "tajweed-madda-permissible",
+    w: "tajweed-waqf",
+    c: "tajweed-ikhfa",
+    f: "tajweed-ikhfa-shafawi",
+    x: "tajweed-idgham",
+    y: "tajweed-idgham-shafawi",
+    z: "tajweed-iqlab",
+    p: "tajweed-tafkhim",
+    u: "tajweed-tarqiq",
+  };
+
+  const activeRules: { rule: string; className: string }[] = [];
+  
+  let i = 0;
+  while (i < rawText.length) {
+    const char = rawText[i];
+    
+    if (char === '[') {
+      const match = rawText.slice(i).match(/^\[([a-z])(?::+\d+)?\[/);
+      if (match) {
+        const rule = match[1];
+        const className = ruleClassMap[rule] || "tajweed-default";
+        activeRules.push({ rule, className });
+        i += match[0].length;
+        continue;
+      }
+    }
+    
+    if (char === ']') {
+      if (activeRules.length > 0) {
+        activeRules.pop();
+      }
+      i++;
+      continue;
+    }
+    
+    if (/\s/.test(char)) {
+      if (currentText.length > 0) {
+        words.push({ text: currentText, tajweedHtml: currentHtml });
+        currentText = "";
+        currentHtml = "";
+      }
+      i++;
+      continue;
+    }
+    
+    currentText += char;
+    
+    let charHtml = char;
+    for (let r = activeRules.length - 1; r >= 0; r--) {
+      const active = activeRules[r];
+      charHtml = `<span class="${active.className}" data-rule="${active.rule}">${charHtml}</span>`;
+    }
+    currentHtml += charHtml;
+    
+    i++;
+  }
+  
+  if (currentText.length > 0) {
+    words.push({ text: currentText, tajweedHtml: currentHtml });
+  }
+  
+  return words;
+}
+
 export default function SurahPage() {
   const params = useParams();
   const router = useRouter();
@@ -119,6 +202,7 @@ export default function SurahPage() {
   const [showLatin, setShowLatin] = useState<boolean>(true);
   const [useTajweed, setUseTajweed] = useState<boolean>(false);
   const [showIsyarat, setShowIsyarat] = useState<boolean>(false);
+  const [useWordHighlight, setUseWordHighlight] = useState<boolean>(true);
   const [bookmarks, setBookmarks] = useState<{ surahNumber: number; surahName: string; indonesianName?: string; ayahNumber: number }[]>([]);
   const [activeTajweedRule, setActiveTajweedRule] = useState<{ name: string; desc: string; targetRect: DOMRect } | null>(null);
 
@@ -127,6 +211,9 @@ export default function SurahPage() {
   const [currentAyahIndex, setCurrentAyahIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [copiedAyah, setCopiedAyah] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [activeWordIndex, setActiveWordIndex] = useState<number>(-1);
+  const [segmentsData, setSegmentsData] = useState<Record<string, number[][]>>({});
 
   // Fetch Surah List for sticky header dropdown navigation
   const [surahList, setSurahList] = useState<Surah[]>([]);
@@ -158,6 +245,9 @@ export default function SurahPage() {
       const savedShowIsyarat = localStorage.getItem("quran-show-isyarat");
       if (savedShowIsyarat !== null) setShowIsyarat(savedShowIsyarat === "true");
 
+      const savedWordHighlight = localStorage.getItem("quran-word-highlight");
+      if (savedWordHighlight !== null) setUseWordHighlight(savedWordHighlight === "true");
+
       const savedBookmarks = localStorage.getItem("quran-bookmarks");
       if (savedBookmarks !== null) {
         try {
@@ -182,6 +272,11 @@ export default function SurahPage() {
   const handleSetShowIsyarat = (val: boolean) => {
     setShowIsyarat(val);
     localStorage.setItem("quran-show-isyarat", String(val));
+  };
+
+  const handleSetUseWordHighlight = (val: boolean) => {
+    setUseWordHighlight(val);
+    localStorage.setItem("quran-word-highlight", String(val));
   };
 
   const handleToggleBookmark = (ayahNum: number) => {
@@ -303,6 +398,44 @@ export default function SurahPage() {
       updateSurahProgress(surahDetail.number, currentAyahIndex + 1);
     }
   }, [loading, surahDetail, currentAyahIndex]);
+
+  // Load word timing segments from Quran.com
+  useEffect(() => {
+    async function loadSegments() {
+      if (!surahNumber) return;
+      try {
+        const recitationId = getQuranComRecitationId(selectedReciter);
+        const data = await getSurahAudioSegments(recitationId, surahNumber);
+        setSegmentsData(data);
+      } catch (e) {
+        console.error("Failed to load audio segments", e);
+      }
+    }
+    loadSegments();
+  }, [surahNumber, selectedReciter]);
+
+  // Sync activeWordIndex based on currentTime
+  useEffect(() => {
+    if (!isPlaying || !hasStartedAudio || !useWordHighlight) {
+      setActiveWordIndex(-1);
+      return;
+    }
+    const currentAyah = surahDetail?.ayahs[currentAyahIndex];
+    if (!currentAyah) return;
+    const verseKey = `${surahNumber}:${currentAyah.numberInSurah}`;
+    const segments = segmentsData[verseKey];
+    if (!segments) {
+      setActiveWordIndex(-1);
+      return;
+    }
+    const timeMs = currentTime * 1000;
+    const activeSeg = segments.find(seg => timeMs >= seg[2] && timeMs <= seg[3]);
+    if (activeSeg) {
+      setActiveWordIndex(activeSeg[0]);
+    } else {
+      setActiveWordIndex(-1);
+    }
+  }, [currentTime, isPlaying, hasStartedAudio, useWordHighlight, currentAyahIndex, surahDetail, surahNumber, segmentsData]);
 
   // Scroll to ayah from hash or query param on load
   useEffect(() => {
@@ -723,12 +856,41 @@ export default function SurahPage() {
                           </div>
                         </div>
 
-                        {/* Arabic Verse Text (renders HTML spans if Tajweed highlighting is enabled) */}
+                        {/* Arabic Verse Text (renders HTML spans if Tajweed highlighting is enabled, or word highlight if playing) */}
                         <div 
                           onClick={handleArabicTextClick}
                           className="mb-6 text-right font-arabic selection:bg-primary-glow selection:text-primary"
+                          dir="rtl"
                         >
-                          {useTajweed ? (
+                          {isActive && useWordHighlight ? (
+                            <p
+                              className="arabic-text text-foreground tracking-wide select-all leading-loose"
+                              style={{ fontSize: `${arabicSize}px` }}
+                            >
+                              {(() => {
+                                const words = parseVerseWords(renderedArabic);
+                                let timingWordIdx = 0;
+                                return words.map((word, wordIdx) => {
+                                  const isWaqf = word.text.replace(/[\u06D6-\u06DC]/g, "").trim().length === 0;
+                                  const currentWordIdx = isWaqf ? -1 : timingWordIdx++;
+                                  const isWordActive = activeWordIndex === currentWordIdx;
+                                  return (
+                                    <span
+                                      key={wordIdx}
+                                      className={`inline-block mx-1 rounded-md px-1 transition-all duration-150 cursor-pointer ${
+                                        isWordActive
+                                          ? "bg-primary/20 text-primary scale-105 font-black ring-1 ring-primary/30"
+                                          : ""
+                                      }`}
+                                      dangerouslySetInnerHTML={useTajweed ? { __html: word.tajweedHtml } : undefined}
+                                    >
+                                      {useTajweed ? null : word.text}
+                                    </span>
+                                  );
+                                });
+                              })()}
+                            </p>
+                          ) : useTajweed ? (
                             <p
                               className="arabic-text text-foreground tracking-wide select-all cursor-help"
                               style={{ fontSize: `${arabicSize}px` }}
@@ -889,6 +1051,7 @@ export default function SurahPage() {
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}
           autoScroll={autoScroll}
+          onTimeUpdate={(time) => setCurrentTime(time)}
         />
       )}
 
@@ -912,6 +1075,8 @@ export default function SurahPage() {
         setUseTajweed={handleSetUseTajweed}
         showIsyarat={showIsyarat}
         setShowIsyarat={handleSetShowIsyarat}
+        useWordHighlight={useWordHighlight}
+        setUseWordHighlight={handleSetUseWordHighlight}
       />
 
       {/* Floating Action Button for Settings - Rendered outside of main */}

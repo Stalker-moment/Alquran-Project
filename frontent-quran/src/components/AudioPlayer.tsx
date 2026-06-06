@@ -28,6 +28,8 @@ interface AudioPlayerProps {
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
   autoScroll: boolean;
+  onTimeUpdate?: (time: number) => void;
+  isJuz?: boolean;
 }
 
 type RepeatMode = "none" | "ayah" | "surah" | "range";
@@ -40,6 +42,8 @@ export default function AudioPlayer({
   isPlaying,
   setIsPlaying,
   autoScroll,
+  onTimeUpdate,
+  isJuz = false,
 }: AudioPlayerProps) {
   const { t } = useLanguage();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -162,6 +166,9 @@ export default function AudioPlayer({
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
+      if (onTimeUpdate) {
+        onTimeUpdate(audio.currentTime);
+      }
     };
 
     const handleLoadedMetadata = () => {
@@ -177,7 +184,7 @@ export default function AudioPlayer({
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, [currentAyahIndex, ayahs, repeatMode, rangeStart, rangeEnd, verseRepeatCount, currentRepeatIteration, setCurrentAyahIndex, setIsPlaying]);
+  }, [currentAyahIndex, ayahs, repeatMode, rangeStart, rangeEnd, verseRepeatCount, currentRepeatIteration, setCurrentAyahIndex, setIsPlaying, onTimeUpdate]);
 
   // Auto-scroll logic using Anime.js
   useEffect(() => {
@@ -186,8 +193,8 @@ export default function AudioPlayer({
     const currentAyah = ayahs[currentAyahIndex];
     if (!currentAyah) return;
 
-    const element = currentAyah.number 
-      ? (document.getElementById(`ayah-${currentAyah.number}`) || document.getElementById(`ayah-${currentAyah.numberInSurah}`))
+    const element = isJuz
+      ? document.getElementById(`ayah-${currentAyah.number}`)
       : document.getElementById(`ayah-${currentAyah.numberInSurah}`);
     if (element) {
       const elementRect = element.getBoundingClientRect();
@@ -204,7 +211,7 @@ export default function AudioPlayer({
         }
       });
     }
-  }, [currentAyahIndex, autoScroll, isPlaying, ayahs]);
+  }, [currentAyahIndex, autoScroll, isPlaying, ayahs, isJuz]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);

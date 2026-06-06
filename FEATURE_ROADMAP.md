@@ -25,6 +25,7 @@
 - [x] Navigasi Juz 1–30 (tab list & reader page)
 - [x] Auto Dark Mode Berdasarkan Waktu
 - [x] 📊 Progress Tadarus Tracker
+- [x] ✨ Word-by-Word Highlight (Sinkron Audio)
 
 ---
 
@@ -75,7 +76,7 @@
 
 ---
 
-#### 3. ✨ Word-by-Word Highlight (Sinkron Audio)
+#### 3. [Done] ✨ Word-by-Word Highlight (Sinkron Audio)
 **Deskripsi:** Setiap kata Arab di-highlight secara real-time mengikuti audio yang sedang diputar.
 
 **Detail implementasi:**

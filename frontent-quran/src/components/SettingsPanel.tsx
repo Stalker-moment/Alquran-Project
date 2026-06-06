@@ -24,6 +24,8 @@ interface SettingsPanelProps {
   setUseTajweed: (tajweed: boolean) => void;
   showIsyarat: boolean;
   setShowIsyarat: (isyarat: boolean) => void;
+  useWordHighlight: boolean;
+  setUseWordHighlight: (val: boolean) => void;
 }
 
 export default function SettingsPanel({
@@ -45,6 +47,8 @@ export default function SettingsPanel({
   setUseTajweed,
   showIsyarat,
   setShowIsyarat,
+  useWordHighlight,
+  setUseWordHighlight,
 }: SettingsPanelProps) {
   const { language, setLanguage, t } = useLanguage();
   const [theme, setTheme] = useState<"light" | "dark" | "sepia">("dark");
@@ -456,6 +460,29 @@ export default function SettingsPanel({
                 <div
                   className={`h-4 w-4 rounded-full bg-white shadow-md transition-all duration-300 ${
                     showIsyarat ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Word-by-Word Highlight Toggle */}
+            <button
+              onClick={() => setUseWordHighlight(!useWordHighlight)}
+              className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
+                useWordHighlight
+                  ? "border-primary bg-primary-glow text-primary"
+                  : "border-card-border bg-background/50 text-muted hover:text-foreground"
+              }`}
+            >
+              <span>{t("wordHighlight")}</span>
+              <div
+                className={`relative flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300 p-0.5 ${
+                  useWordHighlight ? "bg-primary" : "bg-card-border"
+                }`}
+              >
+                <div
+                  className={`h-4 w-4 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    useWordHighlight ? "translate-x-4" : "translate-x-0"
                   }`}
                 />
               </div>

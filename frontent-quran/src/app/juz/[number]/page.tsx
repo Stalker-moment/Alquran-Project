@@ -8,7 +8,7 @@ import Navbar from "@/components/Navbar";
 import SettingsPanel from "@/components/SettingsPanel";
 import AudioPlayer from "@/components/AudioPlayer";
 import CustomSelect from "@/components/CustomSelect";
-import { getJuzDetails, JuzDetail, JUZ_MAPPINGS, Ayah } from "@/utils/api";
+import { getJuzDetails, JuzDetail, JUZ_MAPPINGS, Ayah, getQuranComRecitationId, getSurahAudioSegments } from "@/utils/api";
 import { updateSurahProgress } from "@/utils/progress";
 import { useLanguage } from "@/context/LanguageContext";
 import { FaChevronLeft, FaPlay, FaPause, FaRegCopy, FaCheck, FaSlidersH, FaBookmark, FaRegBookmark } from "react-icons/fa";
@@ -88,6 +88,89 @@ function parseTajweed(text: string): string {
   return current;
 }
 
+interface WordToken {
+  text: string;
+  tajweedHtml: string;
+}
+
+function parseVerseWords(rawText: string): WordToken[] {
+  const words: WordToken[] = [];
+  let currentText = "";
+  let currentHtml = "";
+  
+  const ruleClassMap: Record<string, string> = {
+    h: "tajweed-ham-wasl",
+    s: "tajweed-silent",
+    l: "tajweed-lam-shamsiyyah",
+    n: "tajweed-madda-normal",
+    q: "tajweed-qalaqah",
+    g: "tajweed-ghunnah",
+    m: "tajweed-madda-obligatory",
+    o: "tajweed-madda-permissible",
+    w: "tajweed-waqf",
+    c: "tajweed-ikhfa",
+    f: "tajweed-ikhfa-shafawi",
+    x: "tajweed-idgham",
+    y: "tajweed-idgham-shafawi",
+    z: "tajweed-iqlab",
+    p: "tajweed-tafkhim",
+    u: "tajweed-tarqiq",
+  };
+
+  const activeRules: { rule: string; className: string }[] = [];
+  
+  let i = 0;
+  while (i < rawText.length) {
+    const char = rawText[i];
+    
+    if (char === '[') {
+      const match = rawText.slice(i).match(/^\[([a-z])(?::+\d+)?\[/);
+      if (match) {
+        const rule = match[1];
+        const className = ruleClassMap[rule] || "tajweed-default";
+        activeRules.push({ rule, className });
+        i += match[0].length;
+        continue;
+      }
+    }
+    
+    if (char === ']') {
+      if (activeRules.length > 0) {
+        activeRules.pop();
+      }
+      i++;
+      continue;
+    }
+    
+    if (/\s/.test(char)) {
+      if (currentText.length > 0) {
+        words.push({ text: currentText, tajweedHtml: currentHtml });
+        currentText = "";
+        currentHtml = "";
+      }
+      i++;
+      continue;
+    }
+    
+    currentText += char;
+    
+    let charHtml = char;
+    for (let r = activeRules.length - 1; r >= 0; r--) {
+      const active = activeRules[r];
+      charHtml = `<span class="${active.className}" data-rule="${active.rule}">${charHtml}</span>`;
+    }
+    currentHtml += charHtml;
+    
+    i++;
+  }
+  
+  if (currentText.length > 0) {
+    words.push({ text: currentText, tajweedHtml: currentHtml });
+  }
+  
+  return words;
+}
+
 export default function JuzPage() {
   const params = useParams();
   const router = useRouter();
@@ -117,6 +200,10 @@ export default function JuzPage() {
   const [currentAyahIndex, setCurrentAyahIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [copiedAyah, setCopiedAyah] = useState<number | null>(null);
+  const [useWordHighlight, setUseWordHighlight] = useState<boolean>(true);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [activeWordIndex, setActiveWordIndex] = useState<number>(-1);
+  const [segmentsData, setSegmentsData] = useState<Record<string, Record<string, number[][]>>>({});
 
   // Load preferences from localStorage on mount
   useEffect(() => {
@@ -138,6 +225,8 @@ export default function JuzPage() {
           console.error("Failed to parse bookmarks", e);
         }
       }
+      const savedWordHighlight = localStorage.getItem("quran-word-highlight");
+      if (savedWordHighlight !== null) setUseWordHighlight(savedWordHighlight === "true");
     }
   }, []);
 
@@ -154,6 +243,11 @@ export default function JuzPage() {
   const handleSetShowIsyarat = (val: boolean) => {
     setShowIsyarat(val);
     localStorage.setItem("quran-show-isyarat", String(val));
+  };
+
+  const handleSetUseWordHighlight = (val: boolean) => {
+    setUseWordHighlight(val);
+    localStorage.setItem("quran-word-highlight", String(val));
   };
 
   const handleToggleBookmark = (ayah: Ayah) => {
@@ -256,6 +350,63 @@ export default function JuzPage() {
       }
     }
   }, [loading, juzDetail, currentAyahIndex]);
+
+  // Load word timing segments dynamically based on active ayah's Surah
+  useEffect(() => {
+    async function loadSegments() {
+      if (!juzDetail) return;
+      const activeAyah = juzDetail.ayahs[currentAyahIndex];
+      if (!activeAyah || !activeAyah.surah?.number) return;
+      const surahNum = activeAyah.surah.number;
+      
+      const recitationId = getQuranComRecitationId(selectedReciter);
+      const cacheKey = `${recitationId}-${surahNum}`;
+      
+      // If already loaded/loading, skip
+      if (segmentsData[cacheKey] !== undefined) return;
+      
+      try {
+        const data = await getSurahAudioSegments(recitationId, surahNum);
+        setSegmentsData(prev => ({
+          ...prev,
+          [cacheKey]: data
+        }));
+      } catch (e) {
+        console.error("Failed to load audio segments for surah", surahNum, e);
+      }
+    }
+    loadSegments();
+  }, [juzDetail, currentAyahIndex, selectedReciter, segmentsData]);
+
+  // Sync activeWordIndex based on currentTime
+  useEffect(() => {
+    if (!isPlaying || !hasStartedAudio || !useWordHighlight) {
+      setActiveWordIndex(-1);
+      return;
+    }
+    const currentAyah = juzDetail?.ayahs[currentAyahIndex];
+    if (!currentAyah || !currentAyah.surah?.number) return;
+    const recitationId = getQuranComRecitationId(selectedReciter);
+    const cacheKey = `${recitationId}-${currentAyah.surah.number}`;
+    const surahSegments = segmentsData[cacheKey];
+    if (!surahSegments) {
+      setActiveWordIndex(-1);
+      return;
+    }
+    const verseKey = `${currentAyah.surah.number}:${currentAyah.numberInSurah}`;
+    const segments = surahSegments[verseKey];
+    if (!segments) {
+      setActiveWordIndex(-1);
+      return;
+    }
+    const timeMs = currentTime * 1000;
+    const activeSeg = segments.find(seg => timeMs >= seg[2] && timeMs <= seg[3]);
+    if (activeSeg) {
+      setActiveWordIndex(activeSeg[0]);
+    } else {
+      setActiveWordIndex(-1);
+    }
+  }, [currentTime, isPlaying, hasStartedAudio, useWordHighlight, currentAyahIndex, juzDetail, selectedReciter, segmentsData]);
 
   // Scroll to ayah from hash on load
   useEffect(() => {
@@ -577,8 +728,37 @@ export default function JuzPage() {
                     <div 
                       onClick={handleArabicTextClick}
                       className="mb-6 text-right font-arabic selection:bg-primary-glow selection:text-primary"
+                      dir="rtl"
                     >
-                      {useTajweed ? (
+                      {isActive && isPlaying && useWordHighlight ? (
+                        <p
+                          className="arabic-text text-foreground tracking-wide select-all leading-loose"
+                          style={{ fontSize: `${arabicSize}px` }}
+                        >
+                          {(() => {
+                            const words = parseVerseWords(renderedArabic);
+                            let timingWordIdx = 0;
+                            return words.map((word, wordIdx) => {
+                              const isWaqf = word.text.replace(/[\u06D6-\u06DC]/g, "").trim().length === 0;
+                              const currentWordIdx = isWaqf ? -1 : timingWordIdx++;
+                              const isWordActive = activeWordIndex === currentWordIdx;
+                              return (
+                                <span
+                                  key={wordIdx}
+                                  className={`inline-block mx-1 rounded-md px-1 transition-all duration-150 cursor-pointer ${
+                                    isWordActive
+                                      ? "bg-primary/20 text-primary scale-105 font-black ring-1 ring-primary/30"
+                                      : ""
+                                  }`}
+                                  dangerouslySetInnerHTML={useTajweed ? { __html: word.tajweedHtml } : undefined}
+                                >
+                                  {useTajweed ? null : word.text}
+                                </span>
+                              );
+                            });
+                          })()}
+                        </p>
+                      ) : useTajweed ? (
                         <p
                           className="arabic-text text-foreground tracking-wide select-all cursor-help"
                           style={{ fontSize: `${arabicSize}px` }}
@@ -654,6 +834,8 @@ export default function JuzPage() {
         setUseTajweed={handleSetUseTajweed}
         showIsyarat={showIsyarat}
         setShowIsyarat={handleSetShowIsyarat}
+        useWordHighlight={useWordHighlight}
+        setUseWordHighlight={handleSetUseWordHighlight}
       />
 
       {/* Floating Tajweed Tooltip */}
@@ -681,6 +863,8 @@ export default function JuzPage() {
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}
           autoScroll={autoScroll}
+          onTimeUpdate={(time) => setCurrentTime(time)}
+          isJuz={true}
         />
       )}
     </div>

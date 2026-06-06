@@ -595,3 +595,49 @@ export async function getJuzDetails(
     ayahs: combinedAyahs,
   };
 }
+
+/**
+ * Maps alquran.cloud reciter identifier to quran.com recitation ID
+ */
+export function getQuranComRecitationId(alquranCloudReciter: string): number {
+  switch (alquranCloudReciter) {
+    case "ar.alafasy":
+      return 7;
+    case "ar.sudais":
+      return 3;
+    case "ar.abdulsamad":
+      return 2;
+    default:
+      return 7; // Fallback to Mishary Rashid Alafasy
+  }
+}
+
+/**
+ * Fetch word-by-word timing segments from Quran.com API for a specific Surah
+ */
+export async function getSurahAudioSegments(
+  recitationId: number,
+  surahNumber: number
+): Promise<Record<string, number[][]>> {
+  try {
+    const response = await fetchWithRetry(
+      `https://api.quran.com/api/v4/recitations/${recitationId}/by_chapter/${surahNumber}?fields=segments`
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch segments for recitation ${recitationId} surah ${surahNumber}`);
+    }
+    const json = await response.json();
+    const result: Record<string, number[][]> = {};
+    if (json.audio_files) {
+      json.audio_files.forEach((file: any) => {
+        if (file.verse_key && file.segments) {
+          result[file.verse_key] = file.segments;
+        }
+      });
+    }
+    return result;
+  } catch (err) {
+    console.error("Error fetching audio segments:", err);
+    return {};
+  }
+}
