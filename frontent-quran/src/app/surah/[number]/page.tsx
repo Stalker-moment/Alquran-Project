@@ -192,18 +192,56 @@ export default function SurahPage() {
   const [tafsirDetail, setTafsirDetail] = useState<any>(null);
   const [loadingTafsir, setLoadingTafsir] = useState<boolean>(false);
 
-  // States for Reading Settings
-  const [arabicSize, setArabicSize] = useState<number>(36);
-  const [translationSize, setTranslationSize] = useState<number>(16);
-  const [selectedTranslation, setSelectedTranslation] = useState<string>("id.indonesian");
-  const [selectedReciter, setSelectedReciter] = useState<string>("ar.alafasy");
-  const [autoScroll, setAutoScroll] = useState<boolean>(true);
+  // States for Reading Settings — use lazy initializers to read localStorage synchronously
+  // (avoids race condition where loadSurah fires before the localStorage useEffect runs)
+  const [arabicSize, setArabicSize] = useState<number>(() => {
+    if (typeof window === "undefined") return 36;
+    return parseInt(localStorage.getItem("quran-arabic-size") || "36") || 36;
+  });
+  const [translationSize, setTranslationSize] = useState<number>(() => {
+    if (typeof window === "undefined") return 16;
+    return parseInt(localStorage.getItem("quran-translation-size") || "16") || 16;
+  });
+  const [selectedTranslation, setSelectedTranslation] = useState<string>(() => {
+    if (typeof window === "undefined") return "id.indonesian";
+    return localStorage.getItem("quran-translation") || "id.indonesian";
+  });
+  const [selectedReciter, setSelectedReciter] = useState<string>(() => {
+    if (typeof window === "undefined") return "ar.alafasy";
+    return localStorage.getItem("quran-reciter") || "ar.alafasy";
+  });
+  const [autoScroll, setAutoScroll] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("quran-auto-scroll");
+    return v === null ? true : v === "true";
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [showLatin, setShowLatin] = useState<boolean>(true);
-  const [useTajweed, setUseTajweed] = useState<boolean>(false);
-  const [showIsyarat, setShowIsyarat] = useState<boolean>(false);
-  const [useWordHighlight, setUseWordHighlight] = useState<boolean>(true);
-  const [bookmarks, setBookmarks] = useState<{ surahNumber: number; surahName: string; indonesianName?: string; ayahNumber: number }[]>([]);
+  const [showLatin, setShowLatin] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("quran-show-latin");
+    return v === null ? true : v === "true";
+  });
+  const [useTajweed, setUseTajweed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("quran-use-tajweed") === "true";
+  });
+  const [showIsyarat, setShowIsyarat] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("quran-show-isyarat") === "true";
+  });
+  const [useWordHighlight, setUseWordHighlight] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("quran-word-highlight");
+    return v === null ? true : v === "true";
+  });
+  const [bookmarks, setBookmarks] = useState<{ surahNumber: number; surahName: string; indonesianName?: string; ayahNumber: number }[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("quran-bookmarks") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [activeTajweedRule, setActiveTajweedRule] = useState<{ name: string; desc: string; targetRect: DOMRect } | null>(null);
 
   // States for Audio Player
@@ -233,31 +271,9 @@ export default function SurahPage() {
   const [isAyahSelectOpen, setIsAyahSelectOpen] = useState(false);
   const [surahSearchQuery, setSurahSearchQuery] = useState("");
 
-  // Load preferences from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedShowLatin = localStorage.getItem("quran-show-latin");
-      if (savedShowLatin !== null) setShowLatin(savedShowLatin === "true");
-
-      const savedUseTajweed = localStorage.getItem("quran-use-tajweed");
-      if (savedUseTajweed !== null) setUseTajweed(savedUseTajweed === "true");
-
-      const savedShowIsyarat = localStorage.getItem("quran-show-isyarat");
-      if (savedShowIsyarat !== null) setShowIsyarat(savedShowIsyarat === "true");
-
-      const savedWordHighlight = localStorage.getItem("quran-word-highlight");
-      if (savedWordHighlight !== null) setUseWordHighlight(savedWordHighlight === "true");
-
-      const savedBookmarks = localStorage.getItem("quran-bookmarks");
-      if (savedBookmarks !== null) {
-        try {
-          setBookmarks(JSON.parse(savedBookmarks));
-        } catch (e) {
-          console.error("Failed to parse bookmarks", e);
-        }
-      }
-    }
-  }, []);
+  // Load non-critical state from localStorage on mount (bookmarks are already initialized via lazy useState)
+  // Note: settings that affect API fetching (useTajweed, selectedTranslation, selectedReciter) are
+  // loaded synchronously via lazy useState initializers above to prevent race conditions.
 
   const handleSetShowLatin = (val: boolean) => {
     setShowLatin(val);
