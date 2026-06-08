@@ -55,6 +55,10 @@
   
   --font-sans: var(--font-outfit), system-ui, sans-serif;
   --font-arabic: var(--font-amiri), serif;
+  --font-amiri: var(--font-amiri), serif;
+  --font-naskh: var(--font-naskh), serif;
+  --font-hafs: var(--font-hafs), serif;
+  --font-indopak: var(--font-indopak), serif;
   --font-isyarat: 'QuranIsyarat', sans-serif;
 }
 
@@ -100,7 +104,6 @@ body {
 
 /* Custom fonts styling override for readability */
 .arabic-text {
-  font-family: var(--font-arabic);
   direction: rtl;
   line-height: 2.2;
 }
@@ -254,3 +257,23 @@ body {
   background: var(--primary-glow) !important;
   color: var(--primary) !important;
 }
+
+/* ── Immersive Mushaf Mode Styles ───────────────────────── */
+.mushaf-text {
+  text-align: justify;
+  text-justify: inter-word;
+  line-height: 3.2;
+  font-size: calc(var(--arabic-size, 36px) * 1.15);
+  word-spacing: 4px;
+  direction: rtl;
+}
+
+@media (max-width: 640px) {
+  .mushaf-text {
+    text-align: right;
+    font-size: calc(var(--arabic-size, 36px) * 0.8) !important;
+    line-height: 2.4;
+    word-spacing: 2px;
+  }
+}
+

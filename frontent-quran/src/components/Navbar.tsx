@@ -1,50 +1,136 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { FaBookOpen, FaMoon, FaSun, FaBars, FaTimes, FaGlobe, FaBookmark } from "react-icons/fa";
-import { HiOutlineBookOpen } from "react-icons/hi";
+import { usePathname } from "next/navigation";
+import { FaBookOpen, FaMoon, FaSun, FaBars, FaTimes, FaGlobe, FaChevronDown } from "react-icons/fa";
 import { useLanguage } from "@/context/LanguageContext";
 
+// ── Nav Config ─────────────────────────────────────────────────────────────
+const PRIMARY_NAV = [
+  { href: "/quran", labelKey: "navSurah",    icon: "📖" },
+  { href: "/doa",   labelKey: "navDoa",      icon: "🙏" },
+  { href: "/shalat",labelKey: "navShalat",   icon: "🕌" },
+  { href: "/cari",  labelKey: "navCari",     icon: "🔍" },
+];
+
+const MORE_NAV = [
+  { href: "/progress",    labelKey: "navProgress",    icon: "📊" },
+  { href: "/hafalan",     labelKey: "navHafalan",     icon: "🧠" },
+  { href: "/bookmark",    labelKey: "navBookmark",    icon: "🔖" },
+  { href: "/downloads",   labelKey: "navDownloads",   icon: "📥" },
+  { href: "/asmaul-husna",labelKey: "navAsmaulHusna", icon: "☪️" },
+];
+
+// ── Component ───────────────────────────────────────────────────────────────
 export default function Navbar() {
   const [theme, setTheme] = useState<"light" | "dark" | "sepia">("dark");
   const [mounted, setMounted] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const moreRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const morePortalRef = useRef<HTMLDivElement>(null);
+  const mobileRef = useRef<HTMLDivElement>(null);
+  const [moreDropdownRect, setMoreDropdownRect] = useState<DOMRect | null>(null);
 
+  // ── Init theme ────────────────────────────────────────────────────────────
   useEffect(() => {
     setMounted(true);
     const isAutoTheme = localStorage.getItem("quran-auto-theme") === "true";
-    let storedTheme: "light" | "dark" | "sepia" = "dark";
+    let stored: "light" | "dark" | "sepia" = "dark";
     if (isAutoTheme) {
-      const hour = new Date().getHours();
-      storedTheme = (hour >= 18 || hour < 6) ? "dark" : "light";
-      localStorage.setItem("quran-theme", storedTheme);
+      const h = new Date().getHours();
+      stored = (h >= 18 || h < 6) ? "dark" : "light";
+      localStorage.setItem("quran-theme", stored);
     } else {
-      storedTheme = localStorage.getItem("quran-theme") as "light" | "dark" | "sepia" || "dark";
+      stored = (localStorage.getItem("quran-theme") as "light" | "dark" | "sepia") || "dark";
     }
-    setTheme(storedTheme);
-    document.documentElement.setAttribute("data-theme", storedTheme);
+    setTheme(stored);
+    document.documentElement.setAttribute("data-theme", stored);
   }, []);
 
-  const toggleTheme = (newTheme: "light" | "dark" | "sepia") => {
-    setTheme(newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("quran-theme", newTheme);
+  // ── Scroll awareness ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // ── Close menus on route change ───────────────────────────────────────────
+  useEffect(() => {
+    setIsMobileOpen(false);
+    setIsMoreOpen(false);
+  }, [pathname]);
+
+  // ── Close "more" dropdown on outside click ────────────────────────────────
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // Only close if the click is OUTSIDE both the trigger button AND the portal panel
+      const inButton = moreButtonRef.current?.contains(target) ?? false;
+      const inPanel  = morePortalRef.current?.contains(target) ?? false;
+      if (!inButton && !inPanel) {
+        setIsMoreOpen(false);
+      }
+    };
+    // Delay so the opening click doesn't immediately re-close
+    const id = setTimeout(() => {
+      document.addEventListener("mousedown", handler);
+    }, 50);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener("mousedown", handler);
+    };
+  }, [isMoreOpen]);
+
+  // ── Close "more" dropdown on scroll (portal won't follow on scroll) ────────
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    const onScroll = () => setIsMoreOpen(false);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isMoreOpen]);
+
+  // ── Close mobile menu on outside click ───────────────────────────────────
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (mobileRef.current && !mobileRef.current.contains(e.target as Node)) {
+        setIsMobileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isMobileOpen]);
+
+  const toggleTheme = (t: "light" | "dark" | "sepia") => {
+    setTheme(t);
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("quran-theme", t);
     localStorage.setItem("quran-auto-theme", "false");
   };
 
-  const cycleLanguage = () => {
-    setLanguage(language === "id" ? "en" : "id");
-  };
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  const isMoreActive = MORE_NAV.some(item => isActive(item.href));
+
+  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (!mounted) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-card-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <FaBookOpen className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-wider">Al-Qur'an</span>
+      <header className="sticky top-0 z-[60] w-full h-[60px] border-b border-white/5 bg-[#0b0f19]/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-full max-w-7xl items-center px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 border border-primary/20">
+              <FaBookOpen className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <span className="text-sm font-extrabold tracking-wide text-white">Al-Qur&apos;an</span>
           </div>
         </div>
       </header>
@@ -52,225 +138,239 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-card-border bg-background transition-colors duration-300">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 relative">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group min-w-0">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary-glow border border-primary/20 text-primary transition-all duration-300 group-hover:scale-105 group-hover:border-primary group-hover:shadow-md shrink-0">
-            <FaBookOpen className="h-5 w-5" />
+    <header
+      className={`navbar-root sticky top-0 z-[60] w-full transition-all duration-300 ${
+        isScrolled
+          ? "border-b border-card-border/60 shadow-lg shadow-black/20 bg-background/90 backdrop-blur-2xl"
+          : "border-b border-transparent bg-background/60 backdrop-blur-xl"
+      }`}
+    >
+      {/* ── Subtle top accent line ─────────────────────────────────────────── */}
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent" />
+
+      <div ref={mobileRef} className="mx-auto flex h-[60px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
+
+        {/* ── LOGO ──────────────────────────────────────────────────────────── */}
+        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+          <div className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition-all duration-300 group-hover:border-primary group-hover:bg-primary/20 group-hover:shadow-md group-hover:shadow-primary/20">
+            <FaBookOpen className="h-3.5 w-3.5" />
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="hidden sm:block text-sm sm:text-base md:text-lg font-extrabold tracking-wide text-foreground group-hover:text-primary transition-colors duration-300 truncate">
+          <div className="flex flex-col leading-none">
+            <span className="text-sm font-extrabold tracking-wide text-foreground group-hover:text-primary transition-colors duration-300">
               {t("appName")}
             </span>
-            <span className="block sm:hidden text-sm font-extrabold tracking-wide text-foreground group-hover:text-primary transition-colors duration-300 truncate">
-              Al-Qur&apos;an
-            </span>
-            <span className="hidden xl:block text-[10px] sm:text-xs text-muted truncate">{t("appSub")}</span>
+            <span className="hidden xl:block text-[10px] font-medium text-muted mt-0.5">{t("appSub")}</span>
           </div>
         </Link>
 
-        {/* Desktop Navigation Links */}
-        <div className="hidden lg:flex items-center gap-1.5">
-          <Link 
-            href="/quran"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
-          >
-            <HiOutlineBookOpen className="h-4 w-4" />
-            <span>{t("navSurah")}</span>
-          </Link>
+        {/* ── DESKTOP NAV ───────────────────────────────────────────────────── */}
+        <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center" aria-label="Primary navigation">
+          {PRIMARY_NAV.map(item => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`nav-link relative flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
+                  active
+                    ? "text-primary bg-primary/10"
+                    : "text-muted hover:text-foreground hover:bg-white/5"
+                }`}
+              >
+                <span className="text-xs">{item.icon}</span>
+                <span>{t(item.labelKey)}</span>
+                {active && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          })}
 
-          <Link 
-            href="/shalat"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
-          >
-            <FaMoon className="h-3.5 w-3.5" />
-            <span>{t("navShalat")}</span>
-          </Link>
+          {/* "Lainnya" Dropdown */}
+          <div ref={moreRef} className="relative">
+            <button
+              ref={moreButtonRef}
+              onClick={() => {
+                if (!isMoreOpen && moreButtonRef.current) {
+                  setMoreDropdownRect(moreButtonRef.current.getBoundingClientRect());
+                }
+                setIsMoreOpen(!isMoreOpen);
+              }}
+              className={`nav-link flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all duration-200 ${
+                isMoreActive
+                  ? "text-primary bg-primary/10"
+                  : "text-muted hover:text-foreground hover:bg-white/5"
+              }`}
+              aria-expanded={isMoreOpen}
+            >
+              <span>{language === "id" ? "Lainnya" : "More"}</span>
+              <FaChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${isMoreOpen ? "rotate-180" : ""}`} />
+            </button>
 
-          <Link 
-            href="/doa"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
-          >
-            <span>🙏</span>
-            <span>{t("navDoa")}</span>
-          </Link>
+            {/* Dropdown Panel — rendered via portal so it escapes backdrop-blur stacking context */}
+            {isMoreOpen && moreDropdownRect && typeof document !== "undefined" && createPortal(
+              <div
+                ref={morePortalRef}
+                style={{
+                  position: "fixed",
+                  top: moreDropdownRect.bottom + 6,
+                  left: moreDropdownRect.left + moreDropdownRect.width / 2,
+                  transform: "translateX(-50%)",
+                  zIndex: 9999,
+                }}
+                className="w-48 rounded-2xl border border-card-border bg-background/98 backdrop-blur-xl shadow-2xl shadow-black/40 p-1.5 animate-dropdown-in"
+              >
+                {MORE_NAV.map(item => {
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMoreOpen(false)}
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-150 ${
+                        active
+                          ? "text-primary bg-primary/10"
+                          : "text-muted hover:text-foreground hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="text-base w-5 text-center">{item.icon}</span>
+                      <span>{t(item.labelKey)}</span>
+                    </Link>
+                  );
+                })}
+              </div>,
+              document.body
+            )}
+          </div>
+        </nav>
 
-          <Link 
-            href="/cari"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
-          >
-            <span>🔍</span>
-            <span>{t("navCari")}</span>
-          </Link>
+        {/* ── RIGHT CONTROLS ─────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-1.5 shrink-0">
 
-          <Link 
-            href="/progress"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
-          >
-            <span>📊</span>
-            <span>{t("navProgress")}</span>
-          </Link>
-
-          <Link 
-            href="/bookmark"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
-          >
-            <FaBookmark className="h-3 w-3" />
-            <span>{t("navBookmark")}</span>
-          </Link>
-
-          <Link 
-            href="/asmaul-husna"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-primary hover:bg-primary-glow transition-all duration-300 animate-fade-in"
-          >
-            <span>☪️</span>
-            <span>{t("navAsmaulHusna")}</span>
-          </Link>
-        </div>
-
-        {/* Global Controls & Hamburger Toggle */}
-        <div className="flex items-center gap-2">
-          {/* Language Selector Button */}
-          <button
-            onClick={cycleLanguage}
-            className="flex h-9 items-center justify-center rounded-xl bg-card-bg/50 border border-card-border px-2.5 text-xs font-bold text-foreground hover:bg-card-border/50 hover:border-primary/30 transition-all duration-300 shadow-sm cursor-pointer select-none"
-            title={language === "id" ? "Switch to English" : "Ubah ke Bahasa Indonesia"}
-            aria-label="Toggle Language"
-          >
-            <FaGlobe className="mr-1.5 h-3.5 w-3.5 text-primary" />
-            <span>{language === "id" ? "ID" : "EN"}</span>
-          </button>
-
-          {/* Desktop/Tablet Theme Selector Panel */}
-          <div className="hidden sm:flex items-center gap-1 rounded-xl bg-card-bg/50 border border-card-border p-1">
+          {/* Theme Switcher — desktop */}
+          <div className="hidden sm:flex items-center gap-0.5 rounded-xl border border-card-border/60 bg-card-bg/30 p-1" role="group">
             <button
               onClick={() => toggleTheme("light")}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-300 cursor-pointer ${
-                theme === "light"
-                  ? "bg-primary text-white shadow-xs"
-                  : "text-muted hover:text-foreground hover:bg-card-border/50"
-              }`}
-              title={t("themeLight")}
-              aria-label="Light Theme"
+              className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs transition-all duration-200 cursor-pointer ${theme === "light" ? "bg-primary text-white shadow-sm" : "text-muted hover:text-foreground hover:bg-white/5"}`}
+              title={t("themeLight")} aria-pressed={theme === "light"}
             >
-              <FaSun className="h-3.5 w-3.5" />
+              <FaSun className="h-3 w-3" />
             </button>
             <button
               onClick={() => toggleTheme("sepia")}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg font-semibold text-xs transition-all duration-300 cursor-pointer ${
-                theme === "sepia"
-                  ? "bg-primary text-white shadow-xs"
-                  : "text-muted hover:text-foreground hover:bg-card-border/50"
-              }`}
-              title={t("themeSepia")}
-              aria-label="Sepia Theme"
+              className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs transition-all duration-200 cursor-pointer ${theme === "sepia" ? "bg-primary text-white shadow-sm" : "text-muted hover:text-foreground hover:bg-white/5"}`}
+              title={t("themeSepia")} aria-pressed={theme === "sepia"}
             >
-              📖
+              <span className="text-[11px]">📖</span>
             </button>
             <button
               onClick={() => toggleTheme("dark")}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-300 cursor-pointer ${
-                theme === "dark"
-                  ? "bg-primary text-white shadow-xs"
-                  : "text-muted hover:text-foreground hover:bg-card-border/50"
-              }`}
-              title={t("themeDark")}
-              aria-label="Dark Theme"
+              className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs transition-all duration-200 cursor-pointer ${theme === "dark" ? "bg-primary text-white shadow-sm" : "text-muted hover:text-foreground hover:bg-white/5"}`}
+              title={t("themeDark")} aria-pressed={theme === "dark"}
             >
-              <FaMoon className="h-3.5 w-3.5" />
+              <FaMoon className="h-3 w-3" />
             </button>
           </div>
 
-          {/* Mobile Theme Cycle Button */}
+          {/* Language pill */}
+          <button
+            onClick={() => setLanguage(language === "id" ? "en" : "id")}
+            className="flex h-8 items-center gap-1.5 rounded-xl border border-card-border/60 bg-card-bg/30 px-2.5 text-xs font-bold text-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all duration-200 cursor-pointer"
+            title={language === "id" ? "Switch to English" : "Ubah ke Indonesia"}
+            aria-label="Toggle Language"
+          >
+            <FaGlobe className="h-3 w-3 text-primary" />
+            <span>{language === "id" ? "ID" : "EN"}</span>
+          </button>
+
+          {/* Mobile theme cycle */}
           <button
             onClick={() => {
               if (theme === "light") toggleTheme("sepia");
               else if (theme === "sepia") toggleTheme("dark");
               else toggleTheme("light");
             }}
-            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-xl bg-card-bg/50 border border-card-border text-muted hover:text-primary transition-all duration-300 shadow-xs cursor-pointer"
-            title={t("themeCycle")}
+            className="sm:hidden h-8 w-8 flex items-center justify-center rounded-xl border border-card-border/60 bg-card-bg/30 text-muted hover:text-primary transition-all duration-200 cursor-pointer"
             aria-label="Cycle Theme"
           >
-            {theme === "light" && <FaSun className="h-3.5 w-3.5 text-primary" />}
+            {theme === "light" && <FaSun className="h-3.5 w-3.5 text-amber-400" />}
             {theme === "sepia" && <span className="text-sm">📖</span>}
             {theme === "dark" && <FaMoon className="h-3.5 w-3.5 text-primary" />}
           </button>
 
-          {/* Mobile Hamburger menu toggle */}
+          {/* Hamburger */}
           <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex lg:hidden h-9 w-9 items-center justify-center rounded-xl bg-card-bg/50 border border-card-border text-muted hover:text-primary transition-all duration-300 shadow-xs cursor-pointer"
-            title="Menu"
-            aria-label="Toggle Mobile Menu"
+            onClick={() => setIsMobileOpen(!isMobileOpen)}
+            className={`lg:hidden h-8 w-8 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer ${
+              isMobileOpen
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-card-border/60 bg-card-bg/30 text-muted hover:text-primary"
+            }`}
+            aria-label="Toggle menu" aria-expanded={isMobileOpen}
           >
-            {isMenuOpen ? <FaTimes className="h-4 w-4 text-primary" /> : <FaBars className="h-4 w-4" />}
+            <span className={`transition-transform duration-250 ${isMobileOpen ? "rotate-90" : ""}`}>
+              {isMobileOpen ? <FaTimes className="h-3.5 w-3.5" /> : <FaBars className="h-3.5 w-3.5" />}
+            </span>
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown overlay */}
-      {isMenuOpen && (
-        <div className="lg:hidden border-t border-card-border bg-background/95 backdrop-blur-md transition-all duration-300 ease-in-out absolute top-16 left-0 right-0 z-40 p-4 shadow-xl flex flex-col gap-2">
-          <Link
-            href="/quran"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
-          >
-            <HiOutlineBookOpen className="h-5 w-5 text-primary" />
-            <span>{t("navSurah")}</span>
-          </Link>
-          <Link
-            href="/shalat"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
-          >
-            <FaMoon className="h-4 w-4 text-primary" />
-            <span>{t("navShalat")}</span>
-          </Link>
-          <Link
-            href="/doa"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
-          >
-            <span className="text-base">🙏</span>
-            <span>{t("navDoa")}</span>
-          </Link>
-          <Link
-            href="/cari"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
-          >
-            <span className="text-base">🔍</span>
-            <span>{t("navCari")}</span>
-          </Link>
-          <Link
-            href="/progress"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
-          >
-            <span className="text-base">📊</span>
-            <span>{t("navProgress")}</span>
-          </Link>
-          <Link
-            href="/bookmark"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
-          >
-            <FaBookmark className="h-4 w-4 text-primary" />
-            <span>{t("navBookmark")}</span>
-          </Link>
-          <Link
-            href="/asmaul-husna"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3.5 rounded-xl px-4.5 py-3.5 text-sm font-bold text-foreground hover:bg-primary-glow hover:text-primary transition-all duration-200"
-          >
-            <span className="text-base">☪️</span>
-            <span>{t("navAsmaulHusna")}</span>
-          </Link>
+      {/* ── MOBILE DRAWER ─────────────────────────────────────────────────────── */}
+      <div
+        className={`lg:hidden overflow-hidden transition-all duration-300 ease-[cubic-bezier(.16,1,.3,1)] ${
+          isMobileOpen ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+        aria-hidden={!isMobileOpen}
+      >
+        <div className="border-t border-card-border/50 bg-background/98 backdrop-blur-2xl px-4 py-4">
+          {/* All links grid */}
+          <div className="grid grid-cols-2 gap-1.5 mb-4">
+            {[...PRIMARY_NAV, ...MORE_NAV].map(item => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileOpen(false)}
+                  className={`flex items-center gap-2.5 rounded-xl px-3.5 py-3 text-sm font-bold transition-all duration-200 ${
+                    active
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "text-muted hover:text-foreground hover:bg-white/5 border border-transparent"
+                  }`}
+                >
+                  <span className="text-base leading-none">{item.icon}</span>
+                  <span className="truncate">{t(item.labelKey)}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Divider + appearance controls */}
+          <div className="pt-3 border-t border-card-border/40 flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted flex-1">
+              {language === "id" ? "Tampilan" : "Appearance"}
+            </span>
+            <div className="flex items-center gap-0.5 rounded-xl border border-card-border/60 bg-card-bg/30 p-1">
+              <button onClick={() => toggleTheme("light")} className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs cursor-pointer transition-all duration-200 ${theme === "light" ? "bg-primary text-white" : "text-muted hover:bg-white/5"}`}>
+                <FaSun className="h-3 w-3" />
+              </button>
+              <button onClick={() => toggleTheme("sepia")} className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs cursor-pointer transition-all duration-200 ${theme === "sepia" ? "bg-primary text-white" : "text-muted hover:bg-white/5"}`}>
+                <span className="text-[11px]">📖</span>
+              </button>
+              <button onClick={() => toggleTheme("dark")} className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs cursor-pointer transition-all duration-200 ${theme === "dark" ? "bg-primary text-white" : "text-muted hover:bg-white/5"}`}>
+                <FaMoon className="h-3 w-3" />
+              </button>
+            </div>
+            <button
+              onClick={() => setLanguage(language === "id" ? "en" : "id")}
+              className="flex h-8 items-center gap-1.5 rounded-xl border border-card-border/60 bg-card-bg/30 px-2.5 text-xs font-bold text-foreground hover:text-primary transition-all duration-200 cursor-pointer"
+            >
+              <FaGlobe className="h-3 w-3 text-primary" />
+              <span>{language === "id" ? "ID" : "EN"}</span>
+            </button>
+          </div>
         </div>
-      )}
+      </div>
     </header>
   );
 }

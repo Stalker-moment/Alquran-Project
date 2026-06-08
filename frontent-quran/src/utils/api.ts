@@ -180,7 +180,8 @@ export async function getSurahDetails(
   audioEdition: string = "ar.alafasy",
   useTajweed: boolean = false
 ): Promise<SurahDetail> {
-  const arabicEdition = useTajweed ? "quran-tajweed" : "quran-uthmani";
+  // Always fetch Tajweed edition to allow instant toggle without network reload or audio stoppage
+  const arabicEdition = "quran-tajweed";
 
   // Always fetch en.transliteration as 4th edition regardless of translation
   const editions = `${arabicEdition},${translationEdition},${audioEdition},en.transliteration`;
@@ -546,7 +547,8 @@ export async function getJuzDetails(
   audioEdition: string = "ar.alafasy",
   useTajweed: boolean = false
 ): Promise<JuzDetail> {
-  const arabicEdition = useTajweed ? "quran-tajweed" : "quran-uthmani";
+  // Always fetch Tajweed edition to allow instant toggle without network reload or audio stoppage
+  const arabicEdition = "quran-tajweed";
 
   const [arabicRes, translationRes, audioRes, translitRes] = await Promise.all([
     fetchWithRetry(`${BASE_URL}/juz/${juzNumber}/${arabicEdition}`).then(r => {
@@ -669,4 +671,83 @@ export async function getSurahAudioSegments(
     return {};
   }
 }
+
+/**
+ * Fetch a specific tafsir (by ID) for an entire Surah from Quran.com API.
+ * E.g., ID 169 (Ibn Kathir English) or ID 520 (Jalalayn Indonesian).
+ * Returns a mapping from verse_key (e.g. "1:1") to HTML/text of the tafsir.
+ */
+export async function getSurahTafsirQuranCom(
+  tafsirId: number,
+  surahNumber: number
+): Promise<Record<string, string>> {
+  try {
+    const url = `https://api.quran.com/api/v4/tafsirs/${tafsirId}/by_chapter/${surahNumber}?per_page=350`;
+    const response = await fetchWithRetry(url);
+    if (!response.ok) throw new Error(`Tafsir fetch failed: ${response.status}`);
+    const data = await response.json();
+    const result: Record<string, string> = {};
+    if (data.tafsirs) {
+      for (const t of data.tafsirs) {
+        if (t.verse_key && t.text) {
+          result[t.verse_key] = t.text;
+        }
+      }
+    }
+    return result;
+  } catch (err) {
+    console.error(`Error fetching tafsir ${tafsirId} from Quran.com:`, err);
+    return {};
+  }
+}
+
+/**
+ * Fetch audio URLs for a secondary reciter for a Surah
+ */
+export async function getReciterAudioUrls(
+  surahNumber: number,
+  reciter: string
+): Promise<Record<number, string>> {
+  try {
+    const response = await fetchWithRetry(`${BASE_URL}/surah/${surahNumber}/${reciter}`);
+    if (!response.ok) throw new Error(`Secondary audio fetch failed: ${response.status}`);
+    const json = await response.json();
+    const mapping: Record<number, string> = {};
+    if (json.data && json.data.ayahs) {
+      for (const ayah of json.data.ayahs) {
+        mapping[ayah.numberInSurah] = ayah.audio;
+      }
+    }
+    return mapping;
+  } catch (err) {
+    console.error("Error fetching secondary reciter audio:", err);
+    return {};
+  }
+}
+
+/**
+ * Fetch audio URLs for a secondary reciter for a Juz
+ */
+export async function getJuzReciterAudioUrls(
+  juzNumber: number,
+  reciter: string
+): Promise<Record<number, string>> {
+  try {
+    const response = await fetchWithRetry(`${BASE_URL}/juz/${juzNumber}/${reciter}`);
+    if (!response.ok) throw new Error(`Secondary juz audio fetch failed: ${response.status}`);
+    const json = await response.json();
+    const mapping: Record<number, string> = {};
+    if (json.data && json.data.ayahs) {
+      for (const ayah of json.data.ayahs) {
+        mapping[ayah.number] = ayah.audio;
+      }
+    }
+    return mapping;
+  } catch (err) {
+    console.error("Error fetching secondary reciter juz audio:", err);
+    return {};
+  }
+}
+
+
 

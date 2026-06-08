@@ -3,19 +3,23 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { getRandomInspirationalAyah, QuoteAyah, getSurahs } from "@/utils/api";
 import { useLanguage } from "@/context/LanguageContext";
 import { animate, stagger } from "animejs";
 import {
   FaQuran, FaBookmark, FaVolumeUp, FaGlobe, FaSearch,
   FaArrowRight, FaChevronDown, FaStar, FaRedo, FaHeart,
-  FaRegClock, FaLock, FaMoon, FaExternalLinkAlt
+  FaRegClock, FaLock, FaMoon, FaExternalLinkAlt, FaBrain,
+  FaDownload, FaShareAlt, FaListUl, FaBookOpen
 } from "react-icons/fa";
 import {
   MdOutlineTranslate, MdOutlineFormatSize, MdOutlineColorLens,
   MdOutlineBookmarks, MdOutlineHistory, MdOutlineLayers,
   MdOutlineShare, MdOutlineSchool, MdOutlineDownload,
-  MdOutlineSpeed, MdOutlineFormatListBulleted, MdOutlineSpatialTracking
+  MdOutlineSpeed, MdOutlineFormatListBulleted, MdOutlineSpatialTracking,
+  MdOutlineWifi, MdOutlineNotifications, MdOutlineAnalytics, MdOutlineGroups,
+  MdOutlineMenuBook
 } from "react-icons/md";
 import { HiOutlineSparkles } from "react-icons/hi";
 
@@ -35,65 +39,129 @@ const ACTIVE_FEATURES: Feature[] = [
     icon: <FaQuran />,
     title_id: "Al-Qur'an Digital",
     title_en: "Digital Al-Qur'an",
-    desc_id: "114 surah dengan teks Arab Uthmani berkualitas tinggi, transliterasi, terjemahan, dan audio murottal 5 Qori ternama.",
-    desc_en: "114 surahs with high-quality Uthmani Arabic text, transliteration, translations, and audio from 5 renowned Qaris.",
+    desc_id: "114 surah dengan teks Arab Uthmani, transliterasi NU, terjemahan 10 bahasa, dan audio murottal 6 Qori ternama.",
+    desc_en: "114 surahs with Uthmani Arabic text, NU transliteration, 10-language translations, and 6 Qari audio.",
     gradient: "from-emerald-500/20 to-teal-500/10",
   },
   {
-    icon: <FaSearch />,
-    title_id: "Pencarian AI (Vector)",
-    title_en: "AI Vector Search",
-    desc_id: "Temukan ayat, tafsir, atau doa harian menggunakan bahasa natural sehari-hari bertenaga model AI semantik.",
-    desc_en: "Find verses, tafsir, or daily prayers using natural conversational queries powered by a semantic AI model.",
-    gradient: "from-blue-500/20 to-indigo-500/10",
+    icon: <MdOutlineColorLens />,
+    title_id: "Highlight Tajwid Interaktif",
+    title_en: "Interactive Tajweed",
+    desc_id: "Pewarnaan tajwid per kata dengan 10 aturan hukum bacaan — Ghunnah, Qalaqah, Idgham, Ikhfa, dan lainnya.",
+    desc_en: "Per-word tajweed color coding with 10 recitation rules — Ghunnah, Qalaqah, Idgham, Ikhfa, and more.",
+    gradient: "from-orange-500/20 to-amber-500/10",
   },
   {
     icon: <FaMoon />,
     title_id: "Jadwal Shalat & GPS",
     title_en: "Prayer Times & GPS",
-    desc_id: "Jadwal shalat akurat se-Indonesia dengan deteksi otomatis berbasis GPS dan penyesuaian waktu lokal (WIB/WITA/WIT).",
-    desc_en: "Accurate prayer schedules for Indonesia with automatic GPS location detection and local timezone support.",
+    desc_id: "Jadwal shalat + imsakiyah Ramadhan akurat se-Indonesia dengan deteksi GPS dan peta interaktif.",
+    desc_en: "Accurate prayer + Ramadhan imsakiyah schedules for Indonesia with GPS detection and interactive map.",
     gradient: "from-yellow-500/20 to-amber-500/10",
   },
   {
     icon: <HiOutlineSparkles />,
     title_id: "Doa Harian Lengkap",
-    title_en: "Daily Prayers (Du'a)",
-    desc_id: "Kumpulan doa harian shahih lengkap dengan teks Arab, transliterasi latin, terjemahan, dan riwayat sumber hadits.",
-    desc_en: "Authentic daily prayers with Arabic text, Latin transliteration, translation, and reference details.",
+    title_en: "Daily Du'a Library",
+    desc_id: "Kumpulan doa harian shahih dengan teks Arab, transliterasi, terjemahan, dan referensi hadits lengkap.",
+    desc_en: "Authentic daily prayers with Arabic text, transliteration, translation, and full hadith references.",
     gradient: "from-violet-500/20 to-purple-500/10",
   },
   {
     icon: <MdOutlineSchool />,
-    title_id: "Tafsir Kemenag RI",
-    title_en: "Complete Tafsir",
-    desc_id: "Pendalaman makna Al-Qur'an lebih lengkap dengan tafsir per ayat resmi dari Kementerian Agama Republik Indonesia.",
-    desc_en: "Deepen your Quran understanding with official verse-by-verse Indonesian Kemenag Tafsir.",
+    title_id: "Tafsir 3 Sumber",
+    title_en: "Multi-Source Tafsir",
+    desc_id: "Tafsir per ayat dari Kemenag RI, Tafsir Jalalain, dan Tafsir Ibn Kathir (ringkasan) — on-demand.",
+    desc_en: "Per-verse tafsir from Kemenag RI, Tafsir Jalalain, and Ibn Kathir — loaded on demand.",
     gradient: "from-pink-500/20 to-rose-500/10",
-  },
-  {
-    icon: <MdOutlineColorLens />,
-    title_id: "Highlight Tajwid",
-    title_en: "Tajweed Highlight",
-    desc_id: "Pewarnaan tajwid interaktif per kata untuk mempermudah hukum bacaan yang benar saat membaca.",
-    desc_en: "Color-coded tajweed rules with interactive tooltips to improve proper recitation.",
-    gradient: "from-orange-500/20 to-amber-500/10",
   },
   {
     icon: <MdOutlineSpatialTracking />,
     title_id: "Progress Tadarus",
     title_en: "Tadarus Progress",
-    desc_id: "Pantau persentase baca Al-Qur'an, kelengkapan surah, dan streak tadarus harian secara visual.",
-    desc_en: "Visually track your Quran reading progress, surah completion, and daily reading streaks.",
+    desc_id: "Pantau persentase baca Al-Qur'an, kelengkapan 114 surah, dan streak tadarus harian secara visual.",
+    desc_en: "Visually track reading progress, 114-surah completion, and daily reading streaks.",
     gradient: "from-rose-500/20 to-pink-500/10",
   },
   {
-    icon: <span className="text-lg">☪️</span>,
+    icon: <span className="text-xl">✨</span>,
+    title_id: "Word-by-Word Highlight",
+    title_en: "Word-by-Word Sync",
+    desc_id: "Sorotan kata demi kata secara real-time sinkron dengan audio murottal yang sedang diputar.",
+    desc_en: "Real-time per-word highlight synchronized with playing murottal audio.",
+    gradient: "from-sky-500/20 to-cyan-500/10",
+  },
+  {
+    icon: <FaBrain />,
+    title_id: "Asisten Hafalan",
+    title_en: "Memorization Mode",
+    desc_id: "Flashcard interaktif, cloze test, dan mode sembunyi penuh untuk membantu hafalan Al-Qur'an secara mandiri.",
+    desc_en: "Interactive flashcards, cloze tests, and full-hide mode to assist self-paced Quran memorization.",
+    gradient: "from-indigo-500/20 to-purple-500/10",
+  },
+  {
+    icon: <FaShareAlt />,
+    title_id: "Kartu Ayat Share",
+    title_en: "Verse Share Cards",
+    desc_id: "Generate kartu ayat indah dengan gradien kustom untuk dibagikan ke Instagram, WhatsApp, dan media sosial lainnya.",
+    desc_en: "Generate beautiful verse cards with custom gradients to share on Instagram, WhatsApp, and social media.",
+    gradient: "from-fuchsia-500/20 to-pink-500/10",
+  },
+  {
+    icon: <FaDownload />,
+    title_id: "Audio Offline",
+    title_en: "Offline Audio",
+    desc_id: "Unduh murottal surah pilihan untuk didengarkan tanpa koneksi internet kapan saja dan di mana saja.",
+    desc_en: "Download surah murottal for offline listening anytime, anywhere without an internet connection.",
+    gradient: "from-teal-500/20 to-emerald-500/10",
+  },
+  {
+    icon: <FaBookOpen />,
+    title_id: "Kamus Kata Arab",
+    title_en: "Arabic Word Lookup",
+    desc_id: "Klik kata Arab manapun untuk melihat arti, transliterasi, dan info gramatikal dari Quran Corpus API.",
+    desc_en: "Click any Arabic word to see its meaning, transliteration, and grammatical info from Quran Corpus API.",
+    gradient: "from-lime-500/20 to-green-500/10",
+  },
+  {
+    icon: <FaListUl />,
+    title_id: "Navigasi Juz 1–30",
+    title_en: "Juz 1–30 Navigator",
+    desc_id: "Navigasi berdasarkan 30 Juz Al-Qur'an lengkap dengan daftar kustom, prev/next Juz, dan lompat per ayat.",
+    desc_en: "Navigate by all 30 Juz of the Quran with a custom list, prev/next Juz navigation, and verse jumping.",
+    gradient: "from-amber-500/20 to-orange-500/10",
+  },
+  {
+    icon: <span className="text-xl">🖥️</span>,
+    title_id: "Mode Mushaf Full Screen",
+    title_en: "Mushaf Full Screen",
+    desc_id: "Mode baca imersif tanpa distraksi — hanya teks Arab besar dengan navigasi minimal.",
+    desc_en: "Immersive reading mode without distractions — just large Arabic text with minimal navigation.",
+    gradient: "from-slate-500/20 to-zinc-500/10",
+  },
+  {
+    icon: <span className="text-xl">☪️</span>,
     title_id: "Asmaul Husna",
     title_en: "Asmaul Husna",
-    desc_id: "99 nama-nama Allah yang indah dengan arti dalam 4 bahasa (Indonesia, Inggris, Turki, Urdu), keutamaan, dan referensi Al-Qur'an.",
-    desc_en: "99 beautiful names of Allah with meanings in 4 languages (Indonesian, English, Turkish, Urdu), virtues, and Quran references.",
+    desc_id: "99 nama-nama Allah dengan arti 4 bahasa (ID, EN, TR, Urdu), keutamaan, dan referensi Al-Qur'an.",
+    desc_en: "99 names of Allah with meanings in 4 languages (ID, EN, TR, Urdu), virtues, and Quran references.",
     gradient: "from-amber-500/20 to-yellow-500/10",
+  },
+  {
+    icon: <span className="text-xl">🔀</span>,
+    title_id: "Duo Reciter Mode",
+    title_en: "Duo Reciter Mode",
+    desc_id: "Dengarkan 2 Qori secara bergantian per ayat untuk membandingkan makhraj dan gaya tilawah.",
+    desc_en: "Listen to 2 Qaris alternately per verse to compare makhraj pronunciation and recitation styles.",
+    gradient: "from-cyan-500/20 to-blue-500/10",
+  },
+  {
+    icon: <FaSearch />,
+    title_id: "Pencarian Global",
+    title_en: "Global Search",
+    desc_id: "Cari ayat di seluruh Al-Qur'an berdasarkan kata kunci dalam bahasa Arab atau terjemahan.",
+    desc_en: "Search verses across the entire Quran by keyword in Arabic or translation.",
+    gradient: "from-blue-500/20 to-indigo-500/10",
   },
 ];
 
@@ -106,9 +174,34 @@ type ComingSoon = {
 };
 
 const COMING_SOON_FEATURES: ComingSoon[] = [
-  { icon: <FaHeart />, title_id: "Mode Hafalan & Tahfidz", title_en: "Memorization Mode", desc_id: "Flashcards interaktif dan cloze test untuk membantu hafalan ayat.", desc_en: "Interactive flashcards and cloze tests to assist in memorization." },
-  { icon: <MdOutlineShare />, title_id: "Kartu Share Ayat", title_en: "Verse Share Card", desc_id: "Generate gambar/kartu ayat indah yang siap dibagikan ke media sosial.", desc_en: "Generate beautiful verse cards to easily share on social media." },
-  { icon: <MdOutlineDownload />, title_id: "Akses Offline", title_en: "Offline Access", desc_id: "Download data audio murottal dan surah agar bisa dibuka tanpa kuota internet.", desc_en: "Download audio files and surah data to access the app offline." },
+  {
+    icon: <MdOutlineWifi />,
+    title_id: "PWA Installable App",
+    title_en: "Installable PWA",
+    desc_id: "Install aplikasi langsung ke layar utama HP atau desktop tanpa melalui Play Store atau App Store.",
+    desc_en: "Install the app directly to your home screen or desktop without going through Play Store or App Store."
+  },
+  {
+    icon: <MdOutlineNotifications />,
+    title_id: "Notifikasi Waktu Shalat",
+    title_en: "Prayer Time Notifications",
+    desc_id: "Dapatkan notifikasi push otomatis di browser 5 menit sebelum waktu shalat tiba.",
+    desc_en: "Receive automatic browser push notifications 5 minutes before each prayer time."
+  },
+  {
+    icon: <MdOutlineAnalytics />,
+    title_id: "Statistik Tadarus Lanjutan",
+    title_en: "Advanced Reading Analytics",
+    desc_id: "Grafik heatmap aktivitas tadarus per bulan, rata-rata durasi baca, dan laporan mingguan.",
+    desc_en: "Monthly tadarus activity heatmap, average reading duration, and weekly reading reports."
+  },
+  {
+    icon: <MdOutlineGroups />,
+    title_id: "Halaqah Digital",
+    title_en: "Digital Halaqah",
+    desc_id: "Buat grup tadarus bersama — pantau progress teman, beri semangat, dan tadarus berjamaah secara online.",
+    desc_en: "Create group tadarus — track friends' progress, give encouragement, and read Quran together online."
+  },
 ];
 
 // ── Stat Counter ─────────────────────────────────────────────────────────────
@@ -320,7 +413,7 @@ export default function LandingPage() {
             { value: "114", label: t("landingStatsSurah") },
             { value: "6,236", label: t("landingStatsAyat") },
             { value: "10", label: t("landingStatsLanguages") },
-            { value: "5", label: t("landingStatsReciters") },
+            { value: "6+", label: t("landingStatsReciters") },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -346,16 +439,15 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {[
               {
                 href: "/quran",
                 icon: <FaQuran className="h-6 w-6 text-emerald-400" />,
                 title_id: "Baca Al-Qur'an",
                 title_en: "Read Al-Qur'an",
-                desc_id: "114 Surah lengkap dengan audio murottal 5 Qori, terjemahan, dan tajwid berwarna.",
-                desc_en: "114 Surahs complete with 5 Qari audio, translation, and colored tajweed.",
-                color: "emerald",
+                desc_id: "114 Surah lengkap dengan audio murottal 6 Qori, terjemahan 10 bahasa, dan tajwid berwarna.",
+                desc_en: "114 Surahs with 6 Qari audio, 10-language translations, and colored tajweed.",
                 bgGradient: "from-emerald-500/10 to-teal-500/5 hover:border-emerald-500/40"
               },
               {
@@ -363,41 +455,64 @@ export default function LandingPage() {
                 icon: <FaMoon className="h-5 w-5 text-amber-400" />,
                 title_id: "Jadwal Shalat",
                 title_en: "Prayer Times",
-                desc_id: "Jadwal shalat dan imsakiyah se-Indonesia dengan deteksi GPS dan waktu lokal otomatis.",
-                desc_en: "Accurate prayer schedules for Indonesia with automatic GPS and local time.",
-                color: "amber",
+                desc_id: "Jadwal shalat dan imsakiyah se-Indonesia dengan deteksi GPS dan peta interaktif.",
+                desc_en: "Accurate prayer + imsakiyah schedules with GPS detection and interactive map.",
                 bgGradient: "from-amber-500/10 to-yellow-500/5 hover:border-amber-500/40"
               },
               {
                 href: "/doa",
                 icon: <span className="text-xl">🙏</span>,
                 title_id: "Doa Harian",
-                title_en: "Daily Prayers",
-                desc_id: "Kumpulan doa harian shahih, transliterasi, terjemahan, serta penjelasannya.",
-                desc_en: "Authentic daily prayers, Arabic text, transliteration, and references.",
-                color: "violet",
+                title_en: "Daily Du'a",
+                desc_id: "Kumpulan doa harian shahih, transliterasi, terjemahan, serta referensi haditsnya.",
+                desc_en: "Authentic daily prayers, Arabic text, transliteration, and hadith references.",
                 bgGradient: "from-violet-500/10 to-purple-500/5 hover:border-violet-500/40"
               },
               {
                 href: "/cari",
                 icon: <FaSearch className="h-5 w-5 text-blue-400" />,
-                title_id: "Pencarian AI",
-                title_en: "AI Vector Search",
-                desc_id: "Cari makna Al-Qur'an dengan model AI semantik menggunakan bahasa sehari-hari.",
-                desc_en: "Search Quran meanings with a semantic AI model using natural language.",
-                color: "blue",
+                title_id: "Pencarian Ayat",
+                title_en: "Verse Search",
+                desc_id: "Cari ayat Al-Qur'an di seluruh 114 surah berdasarkan kata kunci.",
+                desc_en: "Search verses across all 114 surahs by keyword in Arabic or translation.",
                 bgGradient: "from-blue-500/10 to-sky-500/5 hover:border-blue-500/40"
+              },
+              {
+                href: "/hafalan",
+                icon: <FaBrain className="h-5 w-5 text-indigo-400" />,
+                title_id: "Asisten Hafalan",
+                title_en: "Memorization",
+                desc_id: "Flashcard, cloze test, dan mode sembunyi penuh untuk bantu hafalan Al-Qur'an.",
+                desc_en: "Flashcards, cloze tests, and full-hide mode for self-paced Quran memorization.",
+                bgGradient: "from-indigo-500/10 to-purple-500/5 hover:border-indigo-500/40"
               },
               {
                 href: "/progress",
                 icon: <span className="text-xl">📊</span>,
                 title_id: "Progress Tadarus",
                 title_en: "Tadarus Progress",
-                desc_id: "Pantau persentase membaca Al-Qur'an, statistik surah, dan pertahankan streak harian Anda.",
-                desc_en: "Monitor your reading percentage, surah completion stats, and keep up your daily streak.",
-                color: "rose",
+                desc_id: "Pantau persentase membaca Al-Qur'an, statistik surah, dan streak harian Anda.",
+                desc_en: "Monitor your reading percentage, surah stats, and daily streak.",
                 bgGradient: "from-rose-500/10 to-pink-500/5 hover:border-rose-500/40"
-              }
+              },
+              {
+                href: "/downloads",
+                icon: <FaDownload className="h-5 w-5 text-teal-400" />,
+                title_id: "Audio Offline",
+                title_en: "Offline Audio",
+                desc_id: "Unduh murottal surah pilihan untuk didengarkan tanpa koneksi internet.",
+                desc_en: "Download surah murottal for offline listening without an internet connection.",
+                bgGradient: "from-teal-500/10 to-emerald-500/5 hover:border-teal-500/40"
+              },
+              {
+                href: "/asmaul-husna",
+                icon: <span className="text-xl">☪️</span>,
+                title_id: "Asmaul Husna",
+                title_en: "Asmaul Husna",
+                desc_id: "99 nama-nama Allah dengan arti 4 bahasa, keutamaan, dan referensi Al-Qur'an.",
+                desc_en: "99 names of Allah with meanings in 4 languages, virtues, and Quran references.",
+                bgGradient: "from-amber-500/10 to-yellow-500/5 hover:border-amber-500/40"
+              },
             ].map((portal, idx) => (
               <Link
                 key={idx}
@@ -609,44 +724,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────── */}
-      <footer className="border-t border-card-border py-8 bg-card-bg/10">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted">
-          <div className="flex items-center gap-3">
-            <FaQuran className="h-4 w-4 text-primary" />
-            <p>{t("copyright", { year: new Date().getFullYear() })}</p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-1.5">
-              <span>{language === "id" ? "Dibuat dengan" : "Made with"}</span>
-              <FaHeart className="h-3 w-3 text-rose-500 animate-pulse" />
-              <span>{language === "id" ? "oleh" : "by"}</span>
-              <a
-                href="https://tierkun.com"
-                target="_blank"
-                rel="noreferrer"
-                className="font-bold text-primary hover:text-accent transition-colors"
-              >
-                sinyo @ tierkun
-              </a>
-            </div>
-            <span className="hidden sm:block text-card-border">·</span>
-            <div className="flex items-center gap-3">
-              <a href="https://alquran.cloud" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">
-                alquran.cloud
-              </a>
-              <span className="text-card-border">·</span>
-              <a href="https://equran.id" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">
-                equran.id
-              </a>
-              <span className="text-card-border">·</span>
-              <Link href="/quran" className="text-primary font-semibold hover:text-accent transition-colors">
-                {t("surahListNav")} →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

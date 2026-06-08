@@ -1,306 +1,354 @@
-# 🕌 Al-Qur'an Al-Kareem — Feature Roadmap
+# 🕌 Al-Qur'an Al-Kareem — Feature Roadmap v2.0
 
-> Dokumen ini berisi semua ide fitur yang akan diimplementasikan ke depannya.
-> Dibuat: 2026-06-05
-
----
-
-## ✅ Fitur yang Sudah Ada (Done)
-
-- [x] Baca Al-Qur'an semua 114 surah
-- [x] Terjemahan multibahasa (Indonesia, Inggris, Prancis, Turki, Jerman, Spanyol, Rusia, China, Jepang)
-- [x] Audio murottal dengan auto-scroll
-- [x] Pilihan Qori/Reciter
-- [x] Latin/transliterasi (gaya NU untuk Indonesia)
-- [x] Highlight Tajwid dengan tooltip keterangan
-- [x] Bookmark ayat (localStorage)
-- [x] Last-read tracker
-- [x] Fitur Isyarat (Arabic Sign Language font)
-- [x] Mode repeat: Ayat, Surah, Range (Tahfidz)
-- [x] Pencarian ayat global
-- [x] Multi-theme: Dark, Light, Sepia
-- [x] Navigasi Surah & Ayah custom dropdown
-- [x] Responsive mobile + desktop
-- [x] Nama & terjemahan surah dalam Bahasa Indonesia
-- [x] Navigasi Juz 1–30 (tab list & reader page)
-- [x] Auto Dark Mode Berdasarkan Waktu
-- [x] 📊 Progress Tadarus Tracker
-- [x] ✨ Word-by-Word Highlight (Sinkron Audio)
+> Roadmap baru untuk eksekusi setelah semua 12 fitur v1.0 selesai.
+> Dibuat: 2026-06-08 | Status saat ini: Semua fitur v1.0 ✅ SELESAI
 
 ---
 
-## 🚀 Fitur yang Akan Dibuat
+## ✅ SELESAI (v1.0 — Semua Done)
+
+- [x] Baca Al-Qur'an 114 surah (Uthmani, tajwid, transliterasi, terjemahan 10 bahasa)
+- [x] Audio murottal 6+ Qori + auto-scroll + speed + repeat mode
+- [x] Navigasi Juz 1–30
+- [x] Highlight Tajwid (10 aturan, per kata)
+- [x] Word-by-Word Highlight (sinkron audio)
+- [x] Mode Mushaf Full Screen (imersif)
+- [x] Pilihan Font Arabic (Uthmani, Hafs, Naskh, IndoPak)
+- [x] Tafsir 3 sumber (Kemenag RI, Jalalain, Ibn Kathir)
+- [x] Kartu Ayat Share (gradien kustom, download PNG)
+- [x] Kamus Kata Arab (WordPopup dari Quran.com API)
+- [x] Duo Reciter Mode (2 Qori bergantian per ayat)
+- [x] Asisten Hafalan (Flashcard, Cloze Test, Full-Hide)
+- [x] Download Audio Offline (Cache API + IndexedDB)
+- [x] Media Download Manager (halaman `/downloads`)
+- [x] Jadwal Shalat + Imsakiyah (GPS, peta interaktif)
+- [x] Kumpulan Doa Harian
+- [x] Progress Tadarus (streak, completion, statistik)
+- [x] Asmaul Husna (99 nama, 4 bahasa)
+- [x] Pencarian Ayat Global
+- [x] Bookmark Ayat
+- [x] Navbar Premium (glassmorphism, portal dropdown)
+- [x] Footer Premium (4 kolom, API reference, legal)
+- [x] Halaman Terms, Privacy, Cookies
 
 ---
 
-### 📂 PRIORITAS 1 — High Impact
+## 🚀 ROADMAP v2.0 — Fitur yang Akan Dikerjakan
 
 ---
 
-#### 1. [Done] 🗂️ Halaman Navigasi Juz
-**Deskripsi:** Navigasi berdasarkan Juz 1–30, tidak hanya per surah.
+### 📂 PRIORITAS 1 — PWA & Infrastruktur
+
+---
+
+#### 1. 📱 PWA (Progressive Web App) — Installable
+
+**Deskripsi:** Ubah aplikasi menjadi PWA agar bisa diinstall langsung ke home screen HP/desktop tanpa app store.
 
 **Detail implementasi:**
-- Tambah halaman `/juz/[number]` (1–30)
-- Fetch API: `https://api.alquran.cloud/v1/juz/{juzNumber}/quran-uthmani`
-- Tampilkan daftar Juz di halaman utama (tab/toggle: "Surah" | "Juz")
-- Setiap Juz menampilkan nama surah yang tercakup + range ayat
-- Navigasi prev/next Juz di halaman baca
+- Tambahkan `manifest.json` dengan icon, theme-color, display: `standalone`
+- Implementasi Service Worker dengan `next-pwa` atau custom SW
+- Strategi cache: Cache-first untuk aset statis, network-first untuk API
+- Tambah `offline.html` fallback jika tidak ada koneksi
+- Daftarkan SW di `layout.tsx`
+- Test instalasi di Chrome (desktop & Android) dan Safari (iOS)
 
 **File yang perlu dibuat/diubah:**
-- `src/app/juz/[number]/page.tsx` ← baru
-- `src/utils/api.ts` ← tambah `getJuzDetails()`
-- `src/app/page.tsx` ← tambah tab "Juz" di samping list surah
-- `src/context/LanguageContext.tsx` ← tambah label `juz`, `juzOf`, dll.
+- `public/manifest.json` ← baru
+- `public/sw.js` ← service worker custom (atau generate via next-pwa)
+- `public/icons/` ← icon 192x192 dan 512x512
+- `src/app/layout.tsx` ← tambah `<link rel="manifest">`
+- `next.config.ts` ← tambah PWA plugin config
 
 ---
 
-#### 2. [Done] 📊 Progress Tadarus Tracker
-**Deskripsi:** Visualisasi berapa persen Al-Qur'an sudah dibaca oleh user.
+#### 2. 🔔 Push Notification Waktu Shalat
+
+**Deskripsi:** Notifikasi push otomatis di browser saat waktu shalat tiba (5 menit sebelumnya).
 
 **Detail implementasi:**
-- Simpan progress per surah di `localStorage` (ayah terakhir dibaca)
-- Halaman `/progress` atau section di homepage
-- Tampilkan:
-  - Overall progress bar (% dari total 6236 ayat)
-  - Grid 114 surah dengan status: belum/sedang/selesai (warna berbeda)
-  - Streak harian (berapa hari berturut-turut membaca)
-  - Total ayat & surah yang sudah dibaca
-- Reset progress option
+- Minta permission `Notification` di halaman shalat
+- Gunakan `setInterval` atau `setTimeout` untuk trigger notifikasi
+- Hitung waktu shalat berikutnya dari data yang sudah ada
+- Notifikasi berisi: nama shalat, waktu, dan countdown
+- Simpan preferensi notifikasi di localStorage
+- Toggle on/off di halaman shalat dan SettingsPanel
 
 **File yang perlu dibuat/diubah:**
-- `src/app/progress/page.tsx` ← baru
-- `src/utils/progress.ts` ← helper untuk hitung & simpan progress
-- `src/app/page.tsx` ← tambah widget "Progress Saya" di hero section
-- `src/components/Navbar.tsx` ← tambah link ke halaman progress
+- `src/utils/notification.ts` ← baru, helper push notification
+- `src/app/shalat/page.tsx` ← tambah permission request & toggle
+- `src/components/SettingsPanel.tsx` ← tambah toggle notifikasi
 
 ---
 
-#### 3. [Done] ✨ Word-by-Word Highlight (Sinkron Audio)
-**Deskripsi:** Setiap kata Arab di-highlight secara real-time mengikuti audio yang sedang diputar.
+### 📂 PRIORITAS 2 — Analytics & Statistik
+
+---
+
+#### 3. 📊 Statistik Tadarus Lanjutan (Heatmap + Grafik)
+
+**Deskripsi:** Visualisasi data bacaan yang lebih kaya — heatmap aktivitas, tren mingguan, dan laporan bacaan.
 
 **Detail implementasi:**
-- Gunakan API timing word-by-word dari `https://api.alqurancloud.com` atau data timing offline
-- Alternatif: gunakan `everyayah.com` yang punya data timing per kata
-- Saat audio play, `currentTime` audio dibandingkan dengan timestamp tiap kata
-- Kata aktif diberi highlight dengan animasi fade/glow
-- Toggle on/off di Settings
+- **Heatmap GitHub-style:** Grid 52×7 menampilkan aktivitas tadarus per hari dalam setahun
+- **Bar chart mingguan:** Berapa ayat dibaca per hari dalam 7 hari terakhir
+- **Pie chart surah:** Distribusi surah yang sering dibaca
+- **Rata-rata durasi baca** berdasarkan timestamp localStorage
+- Gunakan library SVG murni (tidak perlu chart library besar) atau `recharts` (lightweight)
+- Tambah tab baru di halaman `/progress`
 
 **File yang perlu dibuat/diubah:**
-- `src/components/AudioPlayer.tsx` ← expose `currentTime` ke parent
-- `src/app/surah/[number]/page.tsx` ← render kata per kata (split text)
-- `src/utils/api.ts` ← tambah `getWordTimings(surahNum, ayahNum)`
-- `src/app/globals.css` ← style highlight kata aktif
+- `src/app/progress/page.tsx` ← tambah section statistik lanjutan
+- `src/utils/progress.ts` ← tambah fungsi `getDailyActivity()`, `getWeeklyStats()`
+- `src/components/HeatmapChart.tsx` ← baru, komponen SVG heatmap
 
 ---
 
-### 📂 PRIORITAS 2 — UX Enhancement
+#### 4. 🏆 Sistem Gamifikasi (Badges & Achievements)
 
----
+**Deskripsi:** Berikan badge/pencapaian kepada user untuk memotivasi konsistensi membaca.
 
-#### 4. 🖥️ Mode Mushaf Full Screen (Immersive Reading)
-**Deskripsi:** Mode baca layar penuh tanpa elemen UI yang mengganggu (tanpa navbar, settings, dll).
+**Badge yang direncanakan:**
+| Badge | Kondisi |
+|-------|---------|
+| 🌱 Pemula | Membaca pertama kali |
+| 📖 Rajin | 7 hari streak berturut-turut |
+| 🔥 Konsisten | 30 hari streak |
+| ⭐ Al-Fatihah | Surah Al-Fatihah selesai |
+| 🏅 Juz Pertama | Juz 1 selesai |
+| 🎯 Hafidz Pemula | 10 ayat ditandai hafal |
+| 💎 Khatam | 114 surah selesai |
 
 **Detail implementasi:**
-- Tombol "Mode Mushaf" di sticky header
-- Saat aktif: sembunyikan navbar, settings panel, footer
-- Tampilkan hanya teks Arab (besar) + nomor ayat + bismillah
-- Tombol kecil untuk keluar dari mode mushaf
-- Keyboard shortcut: `F` untuk toggle fullscreen mode
-- Animasi transisi masuk/keluar dengan Anime.js
+- Simpan badge yang sudah diperoleh di localStorage
+- Cek kondisi badge setiap kali user membaca/hafal
+- Tampilkan notifikasi animasi saat badge baru diperoleh
+- Tampilkan galeri badge di halaman `/progress`
+- Badge yang belum diperoleh tampil grayscale/terkunci
 
 **File yang perlu dibuat/diubah:**
-- `src/app/surah/[number]/page.tsx` ← state `isMushafMode`
-- `src/app/globals.css` ← class `.mushaf-mode` hide elemen UI
+- `src/utils/achievements.ts` ← baru, logic badge
+- `src/app/progress/page.tsx` ← tambah section badge gallery
+- `src/components/AchievementToast.tsx` ← baru, animasi badge unlock
 
 ---
 
-#### 5. 🔤 Pilihan Font Arabic
-**Deskripsi:** User dapat memilih font Arab sesuai preferensi.
+### 📂 PRIORITAS 3 — Fitur Sosial & Komunitas
 
-**Font yang tersedia:**
-| Font | Identifier | Karakter |
-|------|-----------|----------|
-| Uthmani (Default) | `quran-uthmani` | Standar mushaf Indonesia |
-| Hafs | `hafs` | Gaya Timur Tengah |
-| Naskh | `naskh` | Klasik, mudah dibaca |
-| Indopak | `indopak` | Populer di Asia Selatan |
+---
+
+#### 5. 👥 Halaqah Digital (Grup Tadarus)
+
+**Deskripsi:** Fitur berbagi progress tadarus dalam kelompok kecil (tanpa backend — menggunakan URL sharing).
+
+**Pendekatan tanpa backend:**
+- Generate URL unik yang mengandung encode data progress user (base64 atau JSON di URL hash)
+- Teman bisa buka URL tersebut untuk melihat progress
+- Buat halaman `/halaqah` sebagai dashboard grup (data dari URL params)
+- Fitur "Kirim Progress" → salin URL ke clipboard
+- Tampilkan comparative progress antar anggota (dari URL data)
+
+**File yang perlu dibuat/diubah:**
+- `src/app/halaqah/page.tsx` ← baru
+- `src/utils/shareProgress.ts` ← baru, encode/decode progress URL
+- `src/components/Navbar.tsx` ← tambah link halaqah di MORE_NAV
+
+---
+
+#### 6. 🗺️ Qibla Finder
+
+**Deskripsi:** Kompas digital untuk menentukan arah kiblat berdasarkan lokasi GPS user.
 
 **Detail implementasi:**
-- Tambah dropdown font di SettingsPanel
-- Simpan pilihan ke `localStorage`
-- Load Google Fonts / local font sesuai pilihan
-- Ubah class `font-arabic` secara dinamis
+- Gunakan `DeviceOrientationEvent` untuk kompas digital
+- Hitung sudut kiblat (Makkah) dari koordinat GPS user menggunakan formula Haversine
+- Tampilkan kompas SVG animasi yang berputar real-time
+- Fallback: tampilkan koordinat dan sudut jika kompas tidak tersedia
+- Terintegrasi ke halaman `/shalat` sebagai tab baru
 
 **File yang perlu dibuat/diubah:**
-- `src/components/SettingsPanel.tsx` ← tambah selector font
-- `src/app/globals.css` ← tambah font face definitions
-- `src/context/LanguageContext.tsx` ← tambah label
+- `src/utils/qibla.ts` ← baru, kalkulasi arah kiblat
+- `src/app/shalat/page.tsx` ← tambah tab "Arah Kiblat"
+- `src/components/QiblaCompass.tsx` ← baru, komponen kompas SVG
 
 ---
 
-#### 6. [Done] 🌙 Auto Dark Mode Berdasarkan Waktu
-**Deskripsi:** Tema otomatis berganti berdasarkan jam (siang = light, malam = dark).
+### 📂 PRIORITAS 4 — Konten Islami Tambahan
+
+---
+
+#### 7. 📅 Kalender Hijriah
+
+**Deskripsi:** Kalender Hijriah interaktif dengan konversi tanggal dan hari penting Islam.
 
 **Detail implementasi:**
-- Deteksi jam saat app load
-- Jam 06:00–17:59 → Light/Sepia
-- Jam 18:00–05:59 → Dark
-- Bisa di-override manual di Settings
-- Toggle "Auto Theme" on/off
+- Tampilkan tanggal Hijriah hari ini di widget kecil
+- Konverter tanggal Masehi ↔ Hijriah
+- Tandai hari-hari penting: Ramadhan, Idul Fitri, Idul Adha, Maulid Nabi, dll.
+- Mini widget di landing page / halaman shalat
+- API: `https://api.aladhan.com/v1/gToH` untuk konversi
 
 **File yang perlu dibuat/diubah:**
-- `src/components/SettingsPanel.tsx` ← tambah toggle auto theme
-- `src/app/layout.tsx` ← inject auto theme logic
+- `src/utils/hijri.ts` ← baru, kalkulasi & fetch kalender Hijriah
+- `src/components/HijriWidget.tsx` ← baru, widget tanggal Hijriah
+- `src/app/shalat/page.tsx` ← embed HijriWidget
+- `src/app/page.tsx` ← embed mini widget di hero section
 
 ---
 
-### 📂 PRIORITAS 3 — Audio Lanjutan
+#### 8. 📿 Dzikir Counter (Tasbih Digital)
 
----
-
-#### 7. 🔀 Perbandingan 2 Qori
-**Deskripsi:** Dengarkan 2 reciter secara bergantian per ayat untuk belajar makhraj.
+**Deskripsi:** Tasbih digital untuk menghitung dzikir harian dengan target dan statistik.
 
 **Detail implementasi:**
-- Di AudioPlayer, tambah mode "Duo Reciter"
-- Pilih Reciter A dan Reciter B
-- Tiap ayat: putar Reciter A → selesai → putar Reciter B → lanjut ayat berikutnya
-- UI: dua avatar reciter, yang sedang aktif di-highlight
+- Tampilan tasbih bulat besar dengan animasi klik
+- Pilihan dzikir: Subhanallah, Alhamdulillah, Allahuakbar, Istighfar, Sholawat, custom
+- Target per sesi (misal: 33x, 100x)
+- Simpan statistik harian di localStorage
+- Vibrate API untuk feedback haptik di mobile
+- Halaman `/dzikir`
 
 **File yang perlu dibuat/diubah:**
-- `src/components/AudioPlayer.tsx` ← tambah `reciterB` dan logika duo play
-- `src/components/SettingsPanel.tsx` ← tambah selector reciter kedua
+- `src/app/dzikir/page.tsx` ← baru, halaman tasbih digital
+- `src/components/Navbar.tsx` ← tambah link dzikir di MORE_NAV
+- `src/context/LanguageContext.tsx` ← tambah label dzikir
 
 ---
 
-#### 8. 📥 Download Audio Offline
-**Deskripsi:** Simpan file MP3 murottal per surah untuk diputar tanpa internet.
+#### 9. 🎙️ Murotal Radio (Streaming)
+
+**Deskripsi:** Streaming radio murottal online dari berbagai stasiun radio Qur'an internasional.
 
 **Detail implementasi:**
-- Tombol download di header surah
-- Fetch semua URL audio ayat, zip menggunakan `jszip`
-- Progress bar saat download
-- Simpan ke IndexedDB / Service Worker cache
-- Indikator "Tersimpan Offline" di surah card
+- Daftar stasiun radio murottal (Quran.fm, Albayan Radio, dll)
+- Player sederhana dengan play/pause dan pilihan stasiun
+- Tidak butuh API khusus — cukup streaming dari URL publik
+- Terintegrasi ke halaman baru `/radio`
+
+**Stream URL yang tersedia:**
+```
+Quran.fm (Alafasy)  : http://stream.quran.fm/quran/alafasy
+Saudi Radio Quran   : http://mn1.makkah-live.com:8002/
+Albayan Radio       : http://albayan-radio.com:8000/
+```
 
 **File yang perlu dibuat/diubah:**
-- `src/utils/offline.ts` ← helper download & cache audio
-- `src/app/surah/[number]/page.tsx` ← tombol download
-- `next.config.ts` ← tambah PWA config (next-pwa)
+- `src/app/radio/page.tsx` ← baru
+- `src/components/Navbar.tsx` ← tambah link radio di MORE_NAV
 
 ---
 
-### 📂 PRIORITAS 4 — Konten & Edukasi
+### 📂 PRIORITAS 5 — UX & Aksesibilitas
 
 ---
 
-#### 9. 📖 Tafsir Singkat per Ayat
-**Deskripsi:** Tampilkan tafsir ringkas di bawah terjemahan.
+#### 10. ♿ Mode Aksesibilitas
 
-**Sumber API:**
-- `https://api.alquran.cloud/v1/ayah/{ref}/editions/id.muntakhab` (Tafsir Muntakhab)
-- Atau fetch dari quran.kemenag.go.id
+**Deskripsi:** Peningkatan aksesibilitas untuk pengguna dengan kebutuhan khusus.
 
 **Detail implementasi:**
-- Toggle "Tampilkan Tafsir" di Settings
-- Fetch on-demand (lazy load saat user klik "Baca Tafsir")
-- Tampil sebagai expandable section di bawah terjemahan
-- Pilihan tafsir: Kemenag, Jalalain, Ibnu Katsir (ringkasan)
+- **Ukuran teks super besar** (mode lansia) — ukuran font Arab 64px+
+- **High contrast mode** — warna kontras tinggi untuk low-vision
+- **Screen reader support** — ARIA labels lengkap di semua komponen interaktif
+- **Keyboard navigation** — semua fitur bisa diakses tanpa mouse
+- Tambah toggle di SettingsPanel
 
 **File yang perlu dibuat/diubah:**
-- `src/utils/api.ts` ← tambah `getTafsir(surahNum, ayahNum, edition)`
-- `src/app/surah/[number]/page.tsx` ← tambah tafsir section per ayat
-- `src/components/SettingsPanel.tsx` ← toggle show tafsir
+- `src/app/globals.css` ← tambah `[data-theme="high-contrast"]` variables
+- `src/components/SettingsPanel.tsx` ← tambah toggle accessibility mode
+- `src/components/Navbar.tsx` ← perbaiki ARIA labels
 
 ---
 
-#### 10. 📚 Kamus Kata Arab (Word Lookup)
-**Deskripsi:** Klik kata Arab → popup arti kata + info gramatikal.
+#### 11. 🌐 Multi-Bahasa UI Diperluas
 
-**Sumber data:**
-- API Quranic Arabic Corpus: `http://api.quran.com/api/v4/words`
-- atau `https://api.qurancdn.com`
+**Deskripsi:** Perluas UI language support ke bahasa Arab dan Melayu.
 
 **Detail implementasi:**
-- Split teks Arab per kata (berdasarkan spasi)
-- Setiap kata dibungkus `<span>` yang bisa diklik
-- Klik kata → popup/modal muncul berisi:
-  - Transliterasi kata
-  - Arti kata (Indonesia/Inggris)
-  - Bentuk gramatikal (isim/fi'il/harf)
-  - Jumlah kemunculan di Al-Qur'an
-- Kompatibel dengan mode Tajwid
+- Tambah `ar` (Arabic) ke `UI_TRANSLATIONS` dengan RTL support
+- Tambah `ms` (Malay/Bahasa Malaysia)
+- Saat bahasa Arab aktif: layout seluruh app jadi RTL
+- Navbar, footer, semua label ikut berubah
+- Perbaiki alignment semua komponen untuk RTL
 
 **File yang perlu dibuat/diubah:**
-- `src/utils/wordLookup.ts` ← fetch data kata
-- `src/components/WordPopup.tsx` ← baru, komponen popup
-- `src/app/surah/[number]/page.tsx` ← render kata per kata dengan klik handler
+- `src/context/LanguageContext.tsx` ← tambah `ar` dan `ms` translations
+- `src/app/globals.css` ← tambah RTL utilities
+- `src/app/layout.tsx` ← `dir="rtl"` saat bahasa Arab
 
 ---
 
-#### 11. 🖼️ Kartu Ayat untuk Dibagikan (Quote Share)
-**Deskripsi:** Generate gambar kartu ayat yang indah untuk dibagikan ke media sosial.
+#### 12. 🔍 Pencarian Lanjutan (Filter & Semantik)
+
+**Deskripsi:** Tingkatkan halaman pencarian dengan filter tema dan pencarian semantik sederhana.
 
 **Detail implementasi:**
-- Tombol "Bagikan" di setiap ayat
-- Gunakan `html2canvas` atau `@vercel/og` untuk render kartu
-- Template kartu: teks Arab besar + terjemahan + nama surah + nomor ayat
-- Pilihan warna/tema kartu (dark, light, hijau, ungu)
-- Download sebagai PNG atau langsung share via Web Share API
+- Filter berdasarkan **tema/topik** (Tauhid, Shalat, Sabar, Rezeki, dll)
+- Filter berdasarkan **Juz** dan **Surah**
+- Tampilkan **preview ayat sebelum dan sesudah** hasil pencarian (konteks)
+- **Riwayat pencarian** tersimpan di localStorage
+- Highlight kata kunci di hasil pencarian
 
 **File yang perlu dibuat/diubah:**
-- `src/components/ShareCard.tsx` ← baru, komponen kartu
-- `src/app/api/og/route.tsx` ← Next.js OG image generation
-- `src/app/surah/[number]/page.tsx` ← tombol share per ayat
-
----
-
-#### 12. 🧠 Mode Hafalan (Flashcard / Cloze Test)
-**Deskripsi:** Sembunyikan sebagian kata ayat, user mengisi kelanjutannya.
-
-**Detail implementasi:**
-- Toggle "Mode Hafalan" di Settings
-- Pilih surah yang ingin dihafal
-- Mode tampilan:
-  - **Cloze**: beberapa kata disembunyikan (misal setiap kata ke-3)
-  - **Full Hide**: seluruh ayat disembunyikan, klik untuk reveal
-  - **Flashcard**: tampil satu ayat, klik untuk flip ke terjemahan
-- Skor hafalan tersimpan di localStorage
-- Statistik: berapa ayat berhasil dihafal
-
-**File yang perlu dibuat/diubah:**
-- `src/app/hafalan/page.tsx` ← baru, halaman mode hafalan
-- `src/components/FlashCard.tsx` ← baru, komponen flashcard
-- `src/utils/hafalan.ts` ← logic cloze & scoring
+- `src/app/cari/page.tsx` ← tambah filter UI dan logika
+- `src/utils/api.ts` ← tambah helper pencarian dengan filter
+- `src/context/LanguageContext.tsx` ← tambah label filter baru
 
 ---
 
 ## 📅 Urutan Eksekusi yang Disarankan
 
 ```
-Minggu 1:  [1] Juz Navigation + [6] Auto Dark Mode
-Minggu 2:  [2] Progress Tadarus Tracker
-Minggu 3:  [3] Word-by-Word Highlight (Audio Sync)
-Minggu 4:  [4] Mode Mushaf Full Screen + [5] Font Picker
-Minggu 5:  [9] Tafsir Singkat + [11] Kartu Share
-Minggu 6:  [12] Mode Hafalan (Flashcard)
-Minggu 7:  [10] Kamus Kata Arab
-Minggu 8:  [7] Duo Reciter + [8] Download Offline
+Sesi 1 (besok):
+  [1] PWA Installable           ← Impact tinggi, user experience langsung terasa
+  [2] Push Notification Shalat  ← Sangat berguna, lengkap dengan PWA
+
+Sesi 2:
+  [6] Qibla Finder              ← Fitur shalat yang melengkapi
+  [7] Kalender Hijriah          ← Widget informasi bermanfaat
+  [8] Dzikir Counter            ← Fitur harian, simpel tapi powerful
+
+Sesi 3:
+  [3] Statistik Lanjutan        ← Heatmap & grafik yang visual
+  [4] Gamifikasi / Badge        ← Motivasi konsistensi user
+
+Sesi 4:
+  [9] Murotal Radio             ← Fitur streaming ringan
+  [12] Pencarian Lanjutan       ← UX improvement pencarian
+
+Sesi 5:
+  [5] Halaqah Digital           ← Fitur sosial tanpa backend
+  [10] Mode Aksesibilitas       ← Inklusivitas
+  [11] Multi-Bahasa UI          ← RTL Arabic support
 ```
 
 ---
 
 ## 📝 Catatan Teknis
 
-- **API Utama:** `https://api.alquran.cloud/v1` (gratis, tanpa auth)
-- **API Indonesia:** `https://equran.id/api/v2` (nama surah, latin NU-style)
-- **Audio CDN:** `https://cdn.islamic.network/quran/audio/`
-- **State Management:** Semua pakai React `useState` + `localStorage` (tanpa Redux)
-- **Animasi:** Anime.js (sudah terpasang)
-- **Styling:** TailwindCSS v4 (sudah terpasang)
-- **Framework:** Next.js 16 (Turbopack)
+- **PWA:** Gunakan `next-pwa` (simpel) atau custom SW dengan Workbox
+- **Notifikasi:** `Notification API` bawaan browser, tidak perlu Firebase
+- **Heatmap:** Implementasi SVG murni tanpa chart library eksternal
+- **Qibla:** Formula Haversine + `DeviceOrientationEvent` (perlu HTTPS)
+- **Kalender Hijriah:** API `api.aladhan.com` (gratis, tanpa key)
+- **Dzikir:** Pure React state + Vibrate API (mobile only)
+- **Radio:** Cukup `<audio>` HTML biasa dengan stream URL
+- **State:** Tetap pakai `localStorage` + React Context, tidak perlu Redux/Zustand
+- **Styling:** TailwindCSS v4 + CSS Variables yang sudah ada
 
 ---
 
-*Last updated: 2026-06-05 | by Antigravity AI*
+## 🛠️ API Tambahan yang Akan Digunakan
+
+| API | URL | Kegunaan |
+|-----|-----|----------|
+| **aladhan.com** | `https://api.aladhan.com/v1` | Konversi kalender Hijriah |
+| **Quran.fm** | `http://stream.quran.fm/quran/` | Streaming radio murottal |
+| **Browser Notification API** | Built-in | Push notification shalat |
+| **Device Orientation API** | Built-in | Kompas Qibla |
+| **Vibration API** | Built-in | Feedback haptik Dzikir |
+
+---
+
+*Last updated: 2026-06-08 | by Antigravity AI*
+*v1.0 — 12 fitur selesai ✅ | v2.0 — 12 fitur baru direncanakan 🚀*

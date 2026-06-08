@@ -8,10 +8,14 @@ import Navbar from "@/components/Navbar";
 import SettingsPanel from "@/components/SettingsPanel";
 import AudioPlayer from "@/components/AudioPlayer";
 import CustomSelect from "@/components/CustomSelect";
-import { getJuzDetails, JuzDetail, JUZ_MAPPINGS, Ayah, getQuranComRecitationId, getSurahAudioSegments } from "@/utils/api";
+import { getJuzDetails, JuzDetail, JUZ_MAPPINGS, Ayah, getQuranComRecitationId, getSurahAudioSegments, getSurahTafsir, getSurahTafsirQuranCom, getJuzReciterAudioUrls } from "@/utils/api";
 import { updateSurahProgress } from "@/utils/progress";
+import { getCachedAudioUrl } from "@/utils/offline";
 import { useLanguage } from "@/context/LanguageContext";
-import { FaChevronLeft, FaPlay, FaPause, FaRegCopy, FaCheck, FaSlidersH, FaBookmark, FaRegBookmark } from "react-icons/fa";
+import { FaChevronLeft, FaPlay, FaPause, FaRegCopy, FaCheck, FaSlidersH, FaBookmark, FaRegBookmark, FaShareAlt } from "react-icons/fa";
+import ShareModal from "@/components/ShareModal";
+import { getVerseWords, QuranWord } from "@/utils/wordLookup";
+import WordPopup from "@/components/WordPopup";
 
 const TAJWEED_RULES_INFO: Record<string, Record<string, { name: string; desc: string }>> = {
   id: {
@@ -91,6 +95,43 @@ function parseTajweed(text: string): string {
 interface WordToken {
   text: string;
   tajweedHtml: string;
+}
+
+function cleanTajweed(text: string): string {
+  return text.replace(/\[[a-z](?::\d+)?\[/g, "").replace(/\]/g, "");
+}
+
+function removeBismillah(text: string): string {
+  const bismillahPlain = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+  let plainIdx = 0;
+  let rawIdx = 0;
+  
+  while (plainIdx < bismillahPlain.length && rawIdx < text.length) {
+    const char = text[rawIdx];
+    if (char === '[') {
+      const match = text.slice(rawIdx).match(/^\[[a-z](?::\d+)?\[/);
+      if (match) {
+        rawIdx += match[0].length;
+        continue;
+      }
+    }
+    if (char === ']') {
+      rawIdx++;
+      continue;
+    }
+    
+    if (char === bismillahPlain[plainIdx]) {
+      plainIdx++;
+      rawIdx++;
+    } else {
+      return text;
+    }
+  }
+  
+  if (plainIdx === bismillahPlain.length) {
+    return text.slice(rawIdx).trim();
+  }
+  return text;
 }
 
 function parseVerseWords(rawText: string): WordToken[] {
@@ -181,18 +222,56 @@ export default function JuzPage() {
   const [juzDetail, setJuzDetail] = useState<JuzDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedAudioUrls, setResolvedAudioUrls] = useState<Record<string, string>>({});
 
-  // States for Reading Settings
-  const [arabicSize, setArabicSize] = useState<number>(36);
-  const [translationSize, setTranslationSize] = useState<number>(16);
-  const [selectedTranslation, setSelectedTranslation] = useState<string>("id.indonesian");
-  const [selectedReciter, setSelectedReciter] = useState<string>("ar.alafasy");
-  const [autoScroll, setAutoScroll] = useState<boolean>(true);
+  // States for Reading Settings - use lazy initializers to read localStorage synchronously
+  const [arabicSize, setArabicSize] = useState<number>(() => {
+    if (typeof window === "undefined") return 36;
+    return parseInt(localStorage.getItem("quran-arabic-size") || "36") || 36;
+  });
+  const [translationSize, setTranslationSize] = useState<number>(() => {
+    if (typeof window === "undefined") return 16;
+    return parseInt(localStorage.getItem("quran-translation-size") || "16") || 16;
+  });
+  const [selectedTranslation, setSelectedTranslation] = useState<string>(() => {
+    if (typeof window === "undefined") return "id.indonesian";
+    return localStorage.getItem("quran-translation") || "id.indonesian";
+  });
+  const [selectedReciter, setSelectedReciter] = useState<string>(() => {
+    if (typeof window === "undefined") return "ar.alafasy";
+    return localStorage.getItem("quran-reciter") || "ar.alafasy";
+  });
+  const [autoScroll, setAutoScroll] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("quran-auto-scroll");
+    return v === null ? true : v === "true";
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [showLatin, setShowLatin] = useState<boolean>(true);
-  const [useTajweed, setUseTajweed] = useState<boolean>(false);
-  const [showIsyarat, setShowIsyarat] = useState<boolean>(false);
-  const [bookmarks, setBookmarks] = useState<{ surahNumber: number; surahName: string; indonesianName?: string; ayahNumber: number }[]>([]);
+  const [showLatin, setShowLatin] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("quran-show-latin");
+    return v === null ? true : v === "true";
+  });
+  const [useTajweed, setUseTajweed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("quran-use-tajweed") === "true";
+  });
+  const [showIsyarat, setShowIsyarat] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("quran-show-isyarat") === "true";
+  });
+  const [arabicFont, setArabicFont] = useState<string>(() => {
+    if (typeof window === "undefined") return "quran-uthmani";
+    return localStorage.getItem("quran-arabic-font") || "quran-uthmani";
+  });
+  const [bookmarks, setBookmarks] = useState<{ surahNumber: number; surahName: string; indonesianName?: string; ayahNumber: number }[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("quran-bookmarks") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [activeTajweedRule, setActiveTajweedRule] = useState<{ name: string; desc: string; targetRect: DOMRect } | null>(null);
 
   // States for Audio Player
@@ -200,35 +279,314 @@ export default function JuzPage() {
   const [currentAyahIndex, setCurrentAyahIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [copiedAyah, setCopiedAyah] = useState<number | null>(null);
-  const [useWordHighlight, setUseWordHighlight] = useState<boolean>(true);
+  const [useWordHighlight, setUseWordHighlight] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("quran-word-highlight");
+    return v === null ? true : v === "true";
+  });
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [activeWordIndex, setActiveWordIndex] = useState<number>(-1);
   const [segmentsData, setSegmentsData] = useState<Record<string, Record<string, number[][]>>>({});
 
-  // Load preferences from localStorage on mount
+  // States for Brief Tafsir & Quote Share
+  const [showTafsirSingkat, setShowTafsirSingkat] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("quran-show-tafsir-singkat") === "true";
+  });
+  const [selectedTafsirSource, setSelectedTafsirSource] = useState<string>(() => {
+    if (typeof window === "undefined") return "kemenag";
+    return localStorage.getItem("quran-tafsir-source") || "kemenag";
+  });
+  const [expandedAyahTafsirs, setExpandedAyahTafsirs] = useState<Record<number, boolean>>({});
+  const [loadedTafsirData, setLoadedTafsirData] = useState<Record<string, Record<string, string>>>({});
+  const [loadingTafsirSingkat, setLoadingTafsirSingkat] = useState<boolean>(false);
+  const [activeShareAyah, setActiveShareAyah] = useState<{ arabic: string; translation: string; transliteration?: string; ayahNumber: number; surahName: string; surahNumber: number } | null>(null);
+
+  // States for Duo Reciter
+  const [useDuoReciter, setUseDuoReciter] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("quran-use-duo-reciter") === "true";
+  });
+  const [selectedReciterB, setSelectedReciterB] = useState<string>(() => {
+    if (typeof window === "undefined") return "ar.sudais";
+    return localStorage.getItem("quran-reciter-b") || "ar.sudais";
+  });
+  const [reciterBAudioUrls, setReciterBAudioUrls] = useState<Record<number, string>>({});
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedShowLatin = localStorage.getItem("quran-show-latin");
-      if (savedShowLatin !== null) setShowLatin(savedShowLatin === "true");
+    async function loadSecondaryAudio() {
+      if (!useDuoReciter || !juzNumber || !selectedReciterB) return;
+      try {
+        const mapping = await getJuzReciterAudioUrls(juzNumber, selectedReciterB);
+        setReciterBAudioUrls(mapping);
+      } catch (err) {
+        console.error("Failed to load secondary reciter audio:", err);
+      }
+    }
+    loadSecondaryAudio();
+  }, [juzNumber, selectedReciterB, useDuoReciter]);
 
-      const savedUseTajweed = localStorage.getItem("quran-use-tajweed");
-      if (savedUseTajweed !== null) setUseTajweed(savedUseTajweed === "true");
-
-      const savedShowIsyarat = localStorage.getItem("quran-show-isyarat");
-      if (savedShowIsyarat !== null) setShowIsyarat(savedShowIsyarat === "true");
-
-      const savedBookmarks = localStorage.getItem("quran-bookmarks");
-      if (savedBookmarks !== null) {
-        try {
-          setBookmarks(JSON.parse(savedBookmarks));
-        } catch (e) {
-          console.error("Failed to parse bookmarks", e);
+  // Asynchronously resolve cached local blob URLs
+  useEffect(() => {
+    let isMounted = true;
+    async function resolveUrls() {
+      if (!juzDetail) return;
+      const urls: Record<string, string> = {};
+      for (const ayah of juzDetail.ayahs) {
+        if (ayah.audioUrl) {
+          const cached = await getCachedAudioUrl(ayah.audioUrl);
+          if (cached) {
+            urls[ayah.audioUrl] = cached;
+          }
+        }
+        const audioUrlB = reciterBAudioUrls[ayah.number];
+        if (audioUrlB) {
+          const cachedB = await getCachedAudioUrl(audioUrlB);
+          if (cachedB) {
+            urls[audioUrlB] = cachedB;
+          }
         }
       }
-      const savedWordHighlight = localStorage.getItem("quran-word-highlight");
-      if (savedWordHighlight !== null) setUseWordHighlight(savedWordHighlight === "true");
+      if (isMounted) {
+        setResolvedAudioUrls(urls);
+      }
     }
-  }, []);
+    resolveUrls();
+    return () => {
+      isMounted = false;
+    };
+  }, [juzDetail, reciterBAudioUrls]);
+
+  // States for Word Lookup
+  const [selectedWordLookup, setSelectedWordLookup] = useState<{
+    location: string;
+    arabic: string;
+    transliteration: string;
+    translationId: string;
+    translationEn: string;
+    audioUrl: string | null;
+  } | null>(null);
+  const [isWordLookupOpen, setIsWordLookupOpen] = useState<boolean>(false);
+
+  const handleWordClick = async (surahNum: number, ayahNumberInSurah: number, wordIdx: number, localArabic: string) => {
+    const location = `${surahNum}:${ayahNumberInSurah}:${wordIdx + 1}`;
+    
+    // Auto-pause main murottal playback if active to avoid overlapping audios
+    if (isPlaying) {
+      setIsPlaying(false);
+    }
+
+    setSelectedWordLookup({
+      location,
+      arabic: localArabic,
+      transliteration: "Loading...",
+      translationId: "Loading...",
+      translationEn: "Loading...",
+      audioUrl: null
+    });
+    setIsWordLookupOpen(true);
+
+    try {
+      const verseWords = await getVerseWords(surahNum, ayahNumberInSurah);
+      const realWords = verseWords.filter(w => w.char_type_name === "word");
+      const matchedWord = realWords[wordIdx];
+
+      if (matchedWord) {
+        setSelectedWordLookup({
+          location,
+          arabic: matchedWord.text_uthmani,
+          transliteration: matchedWord.transliteration,
+          translationId: matchedWord.translationId,
+          translationEn: matchedWord.translationEn,
+          audioUrl: matchedWord.audio_url
+        });
+      } else {
+        setSelectedWordLookup({
+          location,
+          arabic: localArabic,
+          transliteration: "Tidak tersedia",
+          translationId: "Terjemahan tidak ditemukan",
+          translationEn: "Translation not found",
+          audioUrl: null
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch word lookup details:", err);
+      setSelectedWordLookup({
+        location,
+        arabic: localArabic,
+        transliteration: "Gagal memuat",
+        translationId: "Gagal memuat detail kata",
+        translationEn: "Failed to load details",
+        audioUrl: null
+      });
+    }
+  };
+
+  // Auto-persist settings to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-show-tafsir-singkat", String(showTafsirSingkat));
+    }
+  }, [showTafsirSingkat]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-use-duo-reciter", String(useDuoReciter));
+    }
+  }, [useDuoReciter]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-reciter-b", selectedReciterB);
+    }
+  }, [selectedReciterB]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-tafsir-source", selectedTafsirSource);
+    }
+  }, [selectedTafsirSource]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-reciter", selectedReciter);
+    }
+  }, [selectedReciter]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-translation", selectedTranslation);
+    }
+  }, [selectedTranslation]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-arabic-size", String(arabicSize));
+    }
+  }, [arabicSize]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-translation-size", String(translationSize));
+    }
+  }, [translationSize]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-show-latin", String(showLatin));
+    }
+  }, [showLatin]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-use-tajweed", String(useTajweed));
+    }
+  }, [useTajweed]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-show-isyarat", String(showIsyarat));
+    }
+  }, [showIsyarat]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quran-word-highlight", String(useWordHighlight));
+    }
+  }, [useWordHighlight]);
+
+  const toggleAyahTafsir = async (ayah: Ayah) => {
+    const surahNum = ayah.surah?.number;
+    if (!surahNum) return;
+    
+    const key = `${surahNum}:${ayah.numberInSurah}`;
+    const isCurrentlyExpanded = !!expandedAyahTafsirs[ayah.number];
+    
+    if (!isCurrentlyExpanded) {
+      if (selectedTafsirSource === "kemenag" && !loadedTafsirData["kemenag"]?.[key]) {
+        try {
+          setLoadingTafsirSingkat(true);
+          const data = await getSurahTafsir(surahNum);
+          const mapping: Record<string, string> = {};
+          if (data && data.tafsir) {
+            for (const t of data.tafsir) {
+              mapping[`${surahNum}:${t.ayat}`] = t.teks;
+            }
+          }
+          setLoadedTafsirData(prev => ({
+            ...prev,
+            kemenag: { ...(prev.kemenag || {}), ...mapping }
+          }));
+        } catch (err) {
+          console.error("Failed to load Kemenag tafsir:", err);
+        } finally {
+          setLoadingTafsirSingkat(false);
+        }
+      } else if (selectedTafsirSource === "jalalain" && !loadedTafsirData["jalalain"]?.[key]) {
+        try {
+          setLoadingTafsirSingkat(true);
+          const data = await getSurahTafsirQuranCom(520, surahNum);
+          setLoadedTafsirData(prev => ({
+            ...prev,
+            jalalain: { ...(prev.jalalain || {}), ...data }
+          }));
+        } catch (err) {
+          console.error("Failed to load Jalalain tafsir:", err);
+        } finally {
+          setLoadingTafsirSingkat(false);
+        }
+      } else if (selectedTafsirSource === "ibnkathir" && !loadedTafsirData["ibnkathir"]?.[key]) {
+        try {
+          setLoadingTafsirSingkat(true);
+          const data = await getSurahTafsirQuranCom(169, surahNum);
+          setLoadedTafsirData(prev => ({
+            ...prev,
+            ibnkathir: { ...(prev.ibnkathir || {}), ...data }
+          }));
+        } catch (err) {
+          console.error("Failed to load Ibn Kathir tafsir:", err);
+        } finally {
+          setLoadingTafsirSingkat(false);
+        }
+      }
+    }
+    
+    setExpandedAyahTafsirs(prev => ({
+      ...prev,
+      [ayah.number]: !prev[ayah.number]
+    }));
+  };
+
+  const getAyahTafsirText = (ayah: Ayah): { text: string; isHtml: boolean } => {
+    const surahNum = ayah.surah?.number;
+    if (!surahNum) return { text: "", isHtml: false };
+    const key = `${surahNum}:${ayah.numberInSurah}`;
+    
+    if (selectedTafsirSource === "kemenag") {
+      return { text: loadedTafsirData["kemenag"]?.[key] || "", isHtml: false };
+    }
+    if (selectedTafsirSource === "jalalain") {
+      return { text: loadedTafsirData["jalalain"]?.[key] || "", isHtml: true };
+    }
+    if (selectedTafsirSource === "ibnkathir") {
+      return { text: loadedTafsirData["ibnkathir"]?.[key] || "", isHtml: true };
+    }
+    return { text: "", isHtml: false };
+  };
+
+  const handleSetArabicFont = (val: string) => {
+    setArabicFont(val);
+    localStorage.setItem("quran-arabic-font", val);
+  };
+
+  const fontClassMap: Record<string, string> = {
+    "quran-uthmani": "font-amiri",
+    "hafs": "font-hafs",
+    "naskh": "font-naskh",
+    "indopak": "font-indopak",
+  };
+  const selectedFontClass = fontClassMap[arabicFont] || "font-amiri";
 
   const handleSetShowLatin = (val: boolean) => {
     setShowLatin(val);
@@ -305,8 +663,9 @@ export default function JuzPage() {
         setCurrentAyahIndex(0);
         setIsPlaying(false);
         setHasStartedAudio(false);
+        setExpandedAyahTafsirs({});
         
-        const data = await getJuzDetails(juzNumber, selectedTranslation, selectedReciter, useTajweed);
+        const data = await getJuzDetails(juzNumber, selectedTranslation, selectedReciter, true);
         setJuzDetail(data);
         setError(null);
       } catch (err: any) {
@@ -317,7 +676,7 @@ export default function JuzPage() {
       }
     }
     loadJuz();
-  }, [juzNumber, selectedTranslation, selectedReciter, useTajweed, language, t]);
+  }, [juzNumber, selectedTranslation, selectedReciter, language, t]);
 
   // Stagger entry animation for Ayah cards
   useEffect(() => {
@@ -521,7 +880,7 @@ export default function JuzPage() {
     <div className={`flex flex-col min-h-screen ${hasStartedAudio ? "pb-32" : "pb-12"}`}>
       
       {/* Sticky Reading Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b border-card-border bg-background transition-colors duration-300">
+      <header className="sticky top-0 z-[60] w-full border-b border-card-border bg-background transition-colors duration-300">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 gap-3 select-none">
           {/* Left: Back Button */}
           <Link
@@ -638,8 +997,11 @@ export default function JuzPage() {
               let renderedArabic = ayah.text;
               
               // Clean first verse Bismillah if it's not Surah 1 and not already cleaned
-              if (ayah.surah?.number !== 1 && ayah.numberInSurah === 1 && renderedArabic.startsWith("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ")) {
-                renderedArabic = renderedArabic.replace("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", "").trim();
+              if (ayah.surah?.number !== 1 && ayah.numberInSurah === 1) {
+                renderedArabic = removeBismillah(renderedArabic);
+              }
+              if (!useTajweed) {
+                renderedArabic = cleanTajweed(renderedArabic);
               }
 
               return (
@@ -721,6 +1083,22 @@ export default function JuzPage() {
                             <FaRegBookmark className="h-3.5 w-3.5" />
                           )}
                         </button>
+
+                        {/* Share Ayah Card */}
+                        <button
+                          onClick={() => setActiveShareAyah({
+                            arabic: renderedArabic,
+                            translation: ayah.translation,
+                            transliteration: ayah.transliteration,
+                            ayahNumber: ayah.numberInSurah,
+                            surahName: ayah.surah?.englishName || "Surah",
+                            surahNumber: ayah.surah?.number || 1
+                          })}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-card-border text-muted hover:text-primary hover:bg-primary-glow transition-colors cursor-pointer"
+                          title={t("bagikanAyat")}
+                        >
+                          <FaShareAlt className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
 
@@ -730,48 +1108,41 @@ export default function JuzPage() {
                       className="mb-6 text-right font-arabic selection:bg-primary-glow selection:text-primary"
                       dir="rtl"
                     >
-                      {isActive && isPlaying && useWordHighlight ? (
-                        <p
-                          className="arabic-text text-foreground tracking-wide select-all leading-loose"
-                          style={{ fontSize: `${arabicSize}px` }}
-                        >
-                          {(() => {
-                            const words = parseVerseWords(renderedArabic);
-                            let timingWordIdx = 0;
-                            return words.map((word, wordIdx) => {
-                              const isWaqf = word.text.replace(/[\u06D6-\u06DC]/g, "").trim().length === 0;
-                              const currentWordIdx = isWaqf ? -1 : timingWordIdx++;
-                              const isWordActive = activeWordIndex === currentWordIdx;
-                              return (
-                                <span
-                                  key={wordIdx}
-                                  className={`inline-block mx-1 rounded-md px-1 transition-all duration-150 cursor-pointer ${
-                                    isWordActive
-                                      ? "bg-primary/20 text-primary scale-105 font-black ring-1 ring-primary/30"
-                                      : ""
-                                  }`}
-                                  dangerouslySetInnerHTML={useTajweed ? { __html: word.tajweedHtml } : undefined}
-                                >
-                                  {useTajweed ? null : word.text}
-                                </span>
-                              );
-                            });
-                          })()}
-                        </p>
-                      ) : useTajweed ? (
-                        <p
-                          className="arabic-text text-foreground tracking-wide select-all cursor-help"
-                          style={{ fontSize: `${arabicSize}px` }}
-                          dangerouslySetInnerHTML={{ __html: parseTajweed(renderedArabic) }}
-                        />
-                      ) : (
-                        <p
-                          className="arabic-text text-foreground tracking-wide select-all"
-                          style={{ fontSize: `${arabicSize}px` }}
-                        >
-                          {renderedArabic}
-                        </p>
-                      )}
+                      <p
+                        className={`arabic-text text-foreground tracking-wide select-text leading-loose ${selectedFontClass}`}
+                        style={{ fontSize: `${arabicSize}px` }}
+                      >
+                        {(() => {
+                          const words = parseVerseWords(renderedArabic);
+                          let timingWordIdx = 0;
+                          return words.map((word, wordIdx) => {
+                            const isWaqf = word.text.replace(/[\u06D6-\u06DC]/g, "").trim().length === 0;
+                            const currentWordIdx = isWaqf ? -1 : timingWordIdx++;
+                            const isWordActive = isActive && isPlaying && useWordHighlight && activeWordIndex === currentWordIdx;
+                            return (
+                              <span
+                                key={wordIdx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isWaqf && ayah.surah?.number) {
+                                    handleWordClick(ayah.surah.number, ayah.numberInSurah, currentWordIdx, cleanTajweed(word.text));
+                                  } else {
+                                    handlePlayAyah(index);
+                                  }
+                                }}
+                                className={`inline-block mx-1 rounded-md px-1 transition-all duration-150 cursor-pointer select-none ${
+                                  isWordActive
+                                    ? "bg-primary/20 text-primary scale-105 font-black ring-1 ring-primary/30"
+                                    : "hover:bg-primary-glow/20"
+                                }`}
+                                dangerouslySetInnerHTML={useTajweed ? { __html: word.tajweedHtml } : undefined}
+                              >
+                                {useTajweed ? null : word.text}
+                              </span>
+                            );
+                          });
+                        })()}
+                      </p>
                     </div>
 
                     {/* Quran Isyarat (Sign Language) */}
@@ -805,6 +1176,48 @@ export default function JuzPage() {
                       >
                         {ayah.translation}
                       </p>
+
+                      {/* Brief Tafsir Section */}
+                      {showTafsirSingkat && (
+                        <div className="mt-4 pt-3 border-t border-card-border/30">
+                          <button
+                            onClick={() => toggleAyahTafsir(ayah)}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-hover transition-colors cursor-pointer select-none animate-fade-in"
+                          >
+                            <span>{expandedAyahTafsirs[ayah.number] ? t("tutupTafsir") : t("bacaTafsir")}</span>
+                            <span className="text-[10px]">{expandedAyahTafsirs[ayah.number] ? "▲" : "▼"}</span>
+                          </button>
+                          
+                          {expandedAyahTafsirs[ayah.number] && (
+                            <div className="mt-3 rounded-xl bg-background/40 border border-card-border p-4 text-xs sm:text-sm text-foreground/90 font-light leading-relaxed animate-fade-in select-all">
+                              {(() => {
+                                const tafsirObj = getAyahTafsirText(ayah);
+                                if (loadingTafsirSingkat && !tafsirObj.text) {
+                                  return (
+                                    <div className="flex items-center gap-2 text-muted animate-pulse select-none">
+                                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                      <span>Memuat Tafsir...</span>
+                                    </div>
+                                  );
+                                }
+                                if (!tafsirObj.text) {
+                                  return <span className="text-muted italic select-none">Tafsir tidak ditemukan untuk ayat ini.</span>;
+                                }
+                                if (tafsirObj.isHtml) {
+                                  return <div dangerouslySetInnerHTML={{ __html: tafsirObj.text }} className="space-y-2 select-text font-sans [&>h1]:font-bold [&>h1]:text-primary [&>h2]:font-bold [&>h2]:text-primary [&>p]:leading-relaxed" />;
+                                }
+                                return <p className="whitespace-pre-line select-text font-sans">{tafsirObj.text}</p>;
+                              })()}
+                              <div className="mt-3 border-t border-card-border/40 pt-2 text-[9px] uppercase font-bold tracking-wider text-muted flex items-center justify-between select-none">
+                                <span>Sumber: {
+                                  selectedTafsirSource === "kemenag" ? "Kemenag RI (Tafsir Wajiz)" :
+                                  selectedTafsirSource === "jalalain" ? "Tafsir Jalalain" : "Tafsir Ibn Kathir"
+                                }</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </React.Fragment>
@@ -836,7 +1249,32 @@ export default function JuzPage() {
         setShowIsyarat={handleSetShowIsyarat}
         useWordHighlight={useWordHighlight}
         setUseWordHighlight={handleSetUseWordHighlight}
+        arabicFont={arabicFont}
+        setArabicFont={handleSetArabicFont}
+        showTafsirSingkat={showTafsirSingkat}
+        setShowTafsirSingkat={setShowTafsirSingkat}
+        selectedTafsirSource={selectedTafsirSource}
+        setSelectedTafsirSource={setSelectedTafsirSource}
+        useDuoReciter={useDuoReciter}
+        setUseDuoReciter={setUseDuoReciter}
+        selectedReciterB={selectedReciterB}
+        setSelectedReciterB={setSelectedReciterB}
       />
+
+      {/* Share Card Modal */}
+      {activeShareAyah && (
+        <ShareModal
+          isOpen={!!activeShareAyah}
+          onClose={() => setActiveShareAyah(null)}
+          surahName={activeShareAyah.surahName}
+          surahNumber={activeShareAyah.surahNumber}
+          ayahNumber={activeShareAyah.ayahNumber}
+          arabicText={activeShareAyah.arabic}
+          transliteration={activeShareAyah.transliteration}
+          translation={activeShareAyah.translation}
+          arabicFont={arabicFont}
+        />
+      )}
 
       {/* Floating Tajweed Tooltip */}
       {activeTajweedRule && (
@@ -853,11 +1291,37 @@ export default function JuzPage() {
         </div>
       )}
 
+      {/* Word Lookup Popup Modal */}
+      {selectedWordLookup && (
+        <WordPopup
+          isOpen={isWordLookupOpen}
+          onClose={() => {
+            setIsWordLookupOpen(false);
+            setSelectedWordLookup(null);
+          }}
+          location={selectedWordLookup.location}
+          arabic={selectedWordLookup.arabic}
+          transliteration={selectedWordLookup.transliteration}
+          translationId={selectedWordLookup.translationId}
+          translationEn={selectedWordLookup.translationEn}
+          audioUrl={selectedWordLookup.audioUrl}
+          arabicFontClass={selectedFontClass}
+        />
+      )}
+
       {/* Sticky Bottom Murottal Audio Player */}
       {hasStartedAudio && juzDetail && (
         <AudioPlayer
           surahName={juzTitle}
-          ayahs={juzDetail.ayahs}
+          ayahs={juzDetail.ayahs.map(ayah => {
+            const rawAudioUrl = ayah.audioUrl;
+            const rawAudioUrlB = reciterBAudioUrls[ayah.number];
+            return {
+              ...ayah,
+              audioUrl: (rawAudioUrl && resolvedAudioUrls[rawAudioUrl]) || rawAudioUrl,
+              audioUrlB: (rawAudioUrlB && resolvedAudioUrls[rawAudioUrlB]) || rawAudioUrlB
+            };
+          })}
           currentAyahIndex={currentAyahIndex}
           setCurrentAyahIndex={setCurrentAyahIndex}
           isPlaying={isPlaying}
@@ -865,6 +1329,9 @@ export default function JuzPage() {
           autoScroll={autoScroll}
           onTimeUpdate={(time) => setCurrentTime(time)}
           isJuz={true}
+          useDuoReciter={useDuoReciter}
+          selectedReciter={selectedReciter}
+          selectedReciterB={selectedReciterB}
         />
       )}
     </div>

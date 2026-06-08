@@ -18,6 +18,7 @@ interface PlayerAyah {
   number?: number;
   numberInSurah: number;
   audioUrl?: string;
+  audioUrlB?: string;
 }
 
 interface AudioPlayerProps {
@@ -30,6 +31,9 @@ interface AudioPlayerProps {
   autoScroll: boolean;
   onTimeUpdate?: (time: number) => void;
   isJuz?: boolean;
+  useDuoReciter?: boolean;
+  selectedReciter?: string;
+  selectedReciterB?: string;
 }
 
 type RepeatMode = "none" | "ayah" | "surah" | "range";
@@ -44,8 +48,19 @@ export default function AudioPlayer({
   autoScroll,
   onTimeUpdate,
   isJuz = false,
+  useDuoReciter = false,
+  selectedReciter = "ar.alafasy",
+  selectedReciterB = "ar.sudais",
 }: AudioPlayerProps) {
   const { t } = useLanguage();
+  const getReciterShortName = (identifier: string) => {
+    if (identifier.includes("alafasy")) return "Alafasy";
+    if (identifier.includes("sudais")) return "Sudais";
+    if (identifier.includes("abdulsamad")) return "Abdul Basit";
+    if (identifier.includes("mahermuaiqly")) return "Muaiqly";
+    if (identifier.includes("ghamadi")) return "Ghamdi";
+    return identifier.split(".").pop() || "Qori";
+  };
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("none");
   const [rangeStart, setRangeStart] = useState<number>(1);
@@ -59,14 +74,17 @@ export default function AudioPlayer({
   const [duration, setDuration] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<number>(0);
 
+  const [activeDuoReciter, setActiveDuoReciter] = useState<"A" | "B">("A");
+
   // Sync rangeEnd when ayahs length changes
   useEffect(() => {
     setRangeEnd(ayahs.length || 1);
   }, [ayahs.length]);
 
-  // Reset repeat iteration when active verse changes
+  // Reset repeat iteration and active reciter when active verse changes
   useEffect(() => {
     setCurrentRepeatIteration(1);
+    setActiveDuoReciter("A");
   }, [currentAyahIndex]);
 
   // Initialize Audio Element
@@ -78,46 +96,92 @@ export default function AudioPlayer({
         audioRef.current.pause();
         audioRef.current = null;
       }
+      // Reset lastSrcRef on cleanup so a new mount will trigger a source sync
+      lastSrcRef.current = "";
     };
   }, []);
 
+  // Track whether a source change is pending play
+  const pendingPlayRef = React.useRef(false);
+  const lastSrcRef = React.useRef<string>("");
+
   // Combined robust audio playback engine controller
-  // Resolves AbortError by handling the play() promise and consolidating triggers
+  // Resolves NotSupportedError by waiting for 'canplay' before playing a new source,
+  // and AbortError by handling the play() promise.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const currentAyah = ayahs[currentAyahIndex];
-    if (!currentAyah || !currentAyah.audioUrl) {
+    if (!currentAyah) {
       setIsPlaying(false);
       return;
     }
 
-    // 1. Sync Audio Source URL
-    const cleanSrc = currentAyah.audioUrl;
-    if (audio.src !== cleanSrc) {
-      audio.src = cleanSrc;
-      audio.load();
+    // Determine the active audio source
+    const activeSrc = (useDuoReciter && activeDuoReciter === "B" && currentAyah.audioUrlB)
+      ? currentAyah.audioUrlB
+      : currentAyah.audioUrl;
+
+    if (!activeSrc) {
+      setIsPlaying(false);
+      return;
     }
 
-    // 2. Sync Properties
+    // Sync Properties first (before load/play to avoid another re-render)
     audio.volume = isMuted ? 0 : volume;
     audio.playbackRate = playbackRate;
 
-    // 3. Play or Pause safely handling Promises
-    if (isPlaying) {
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          if (err.name !== "AbortError") {
-            console.error("Playback error occurred:", err);
+    const sourceChanged = lastSrcRef.current !== activeSrc;
+
+    if (sourceChanged) {
+      lastSrcRef.current = activeSrc;
+      audio.src = activeSrc;
+      audio.load();
+
+      if (isPlaying) {
+        // Wait until the browser can actually play this source before calling play()
+        pendingPlayRef.current = true;
+        const onCanPlay = () => {
+          audio.removeEventListener("canplay", onCanPlay);
+          if (pendingPlayRef.current) {
+            pendingPlayRef.current = false;
+            audio.volume = isMuted ? 0 : volume;
+            audio.playbackRate = playbackRate;
+            const p = audio.play();
+            if (p !== undefined) {
+              p.catch((err) => {
+                if (err.name !== "AbortError") {
+                  console.error("Playback error occurred:", err);
+                }
+              });
+            }
           }
-        });
+        };
+        audio.addEventListener("canplay", onCanPlay);
+        // Cleanup if the effect re-runs before canplay fires
+        return () => {
+          audio.removeEventListener("canplay", onCanPlay);
+          pendingPlayRef.current = false;
+        };
       }
     } else {
-      audio.pause();
+      // Source hasn't changed — just play/pause immediately
+      pendingPlayRef.current = false;
+      if (isPlaying) {
+        const p = audio.play();
+        if (p !== undefined) {
+          p.catch((err) => {
+            if (err.name !== "AbortError") {
+              console.error("Playback error occurred:", err);
+            }
+          });
+        }
+      } else {
+        audio.pause();
+      }
     }
-  }, [currentAyahIndex, ayahs, isPlaying, volume, isMuted, playbackRate, setIsPlaying]);
+  }, [currentAyahIndex, ayahs, isPlaying, volume, isMuted, playbackRate, setIsPlaying, useDuoReciter, activeDuoReciter]);
 
   // Handle ended, time updates, and metadata load events
   useEffect(() => {
@@ -125,14 +189,27 @@ export default function AudioPlayer({
     if (!audio) return;
 
     const handleEnded = () => {
+      const currentAyah = ayahs[currentAyahIndex];
+
+      // If Duo Reciter is active, and we just finished Reciter A, and Reciter B exists, play B
+      if (useDuoReciter && activeDuoReciter === "A" && currentAyah && currentAyah.audioUrlB) {
+        setActiveDuoReciter("B");
+        return;
+      }
+
+      // If we got here, we finished the verse (either Reciter B finished, or Reciter A finished and Duo Reciter is inactive/has no B audio)
+      setActiveDuoReciter("A");
+
       if (repeatMode === "ayah") {
         // Repeat single verse: if not exceeded repeat count, play again
         if (currentRepeatIteration < verseRepeatCount) {
           setCurrentRepeatIteration(prev => prev + 1);
-          audio.currentTime = 0;
-          audio.play().catch((err) => {
-            if (err.name !== "AbortError") console.error(err);
-          });
+          if (!useDuoReciter || !currentAyah?.audioUrlB) {
+            audio.currentTime = 0;
+            audio.play().catch((err) => {
+              if (err.name !== "AbortError") console.error(err);
+            });
+          }
         } else {
           setCurrentRepeatIteration(1);
           if (currentAyahIndex < ayahs.length - 1) {
@@ -184,7 +261,7 @@ export default function AudioPlayer({
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, [currentAyahIndex, ayahs, repeatMode, rangeStart, rangeEnd, verseRepeatCount, currentRepeatIteration, setCurrentAyahIndex, setIsPlaying, onTimeUpdate]);
+  }, [currentAyahIndex, ayahs, repeatMode, rangeStart, rangeEnd, verseRepeatCount, currentRepeatIteration, setCurrentAyahIndex, setIsPlaying, onTimeUpdate, useDuoReciter, activeDuoReciter]);
 
   // Auto-scroll logic using Anime.js
   useEffect(() => {
@@ -300,6 +377,25 @@ export default function AudioPlayer({
           <span className="text-[9px] sm:text-xs text-muted truncate w-full leading-none mt-0.5">
             {t("ayahOf", { current: ayahs[currentAyahIndex]?.numberInSurah || 1, total: ayahs.length })}
           </span>
+          {useDuoReciter && (
+            <div className="flex items-center gap-1 mt-1 text-[8px] sm:text-[10px] select-none">
+              <span className={`px-1 py-0.5 rounded-sm font-black uppercase transition-all duration-300 ${
+                activeDuoReciter === "A"
+                  ? "bg-primary text-white scale-105 shadow-xs shadow-primary-glow font-bold"
+                  : "bg-card-border/60 text-muted opacity-60 font-medium"
+              }`}>
+                {getReciterShortName(selectedReciter)}
+              </span>
+              <span className="text-[8px] text-muted opacity-50">⇄</span>
+              <span className={`px-1 py-0.5 rounded-sm font-black uppercase transition-all duration-300 ${
+                activeDuoReciter === "B"
+                  ? "bg-primary text-white scale-105 shadow-xs shadow-primary-glow font-bold"
+                  : "bg-card-border/60 text-muted opacity-60 font-medium"
+              }`}>
+                {getReciterShortName(selectedReciterB)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 2. Center Section: Playback Controls (Occupies Column 2, mathematically centered) */}

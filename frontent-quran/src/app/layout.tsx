@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Amiri, Outfit } from "next/font/google";
+import { Amiri, Outfit, Noto_Naskh_Arabic, Scheherazade_New, Lateef } from "next/font/google";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ToastProvider } from "@/context/ToastContext";
 import ToastContainer from "@/components/Toast";
@@ -9,6 +9,27 @@ const amiri = Amiri({
   subsets: ["arabic"],
   weight: ["400", "700"],
   variable: "--font-amiri",
+  display: "swap",
+});
+
+const notoNaskh = Noto_Naskh_Arabic({
+  subsets: ["arabic"],
+  weight: ["400", "700"],
+  variable: "--font-naskh",
+  display: "swap",
+});
+
+const scheherazade = Scheherazade_New({
+  subsets: ["arabic"],
+  weight: ["400", "700"],
+  variable: "--font-hafs",
+  display: "swap",
+});
+
+const lateef = Lateef({
+  subsets: ["arabic"],
+  weight: ["400"],
+  variable: "--font-indopak",
   display: "swap",
 });
 
@@ -32,7 +53,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${outfit.variable} ${amiri.variable} h-full antialiased`}
+      className={`${outfit.variable} ${amiri.variable} ${notoNaskh.variable} ${scheherazade.variable} ${lateef.variable} h-full antialiased`}
       data-theme="dark"
       suppressHydrationWarning
     >

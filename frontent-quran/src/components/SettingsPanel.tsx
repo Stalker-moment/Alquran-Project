@@ -26,6 +26,16 @@ interface SettingsPanelProps {
   setShowIsyarat: (isyarat: boolean) => void;
   useWordHighlight: boolean;
   setUseWordHighlight: (val: boolean) => void;
+  arabicFont: string;
+  setArabicFont: (val: string) => void;
+  showTafsirSingkat: boolean;
+  setShowTafsirSingkat: (show: boolean) => void;
+  selectedTafsirSource: string;
+  setSelectedTafsirSource: (source: string) => void;
+  useDuoReciter: boolean;
+  setUseDuoReciter: (val: boolean) => void;
+  selectedReciterB: string;
+  setSelectedReciterB: (reciter: string) => void;
 }
 
 export default function SettingsPanel({
@@ -49,12 +59,25 @@ export default function SettingsPanel({
   setShowIsyarat,
   useWordHighlight,
   setUseWordHighlight,
+  arabicFont,
+  setArabicFont,
+  showTafsirSingkat,
+  setShowTafsirSingkat,
+  selectedTafsirSource,
+  setSelectedTafsirSource,
+  useDuoReciter,
+  setUseDuoReciter,
+  selectedReciterB,
+  setSelectedReciterB,
 }: SettingsPanelProps) {
   const { language, setLanguage, t } = useLanguage();
   const [theme, setTheme] = useState<"light" | "dark" | "sepia">("dark");
   const [autoTheme, setAutoTheme] = useState<boolean>(false);
   const [isTranslationOpen, setIsTranslationOpen] = useState(false);
   const [isReciterOpen, setIsReciterOpen] = useState(false);
+  const [isFontOpen, setIsFontOpen] = useState(false);
+  const [isTafsirSourceOpen, setIsTafsirSourceOpen] = useState(false);
+  const [isReciterBOpen, setIsReciterBOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && typeof window !== "undefined") {
@@ -65,6 +88,9 @@ export default function SettingsPanel({
     }
     setIsTranslationOpen(false);
     setIsReciterOpen(false);
+    setIsFontOpen(false);
+    setIsTafsirSourceOpen(false);
+    setIsReciterBOpen(false);
   }, [isOpen]);
 
   const handleThemeChange = (newTheme: "light" | "dark" | "sepia") => {
@@ -241,6 +267,9 @@ export default function SettingsPanel({
                 onClick={() => {
                   setIsTranslationOpen(!isTranslationOpen);
                   setIsReciterOpen(false);
+                  setIsFontOpen(false);
+                  setIsTafsirSourceOpen(false);
+                  setIsReciterBOpen(false);
                 }}
                 className="w-full flex items-center justify-between rounded-xl border border-card-border bg-background px-3 py-2 text-sm text-foreground hover:border-primary/45 transition-all duration-200 cursor-pointer shadow-xs text-left"
               >
@@ -289,6 +318,9 @@ export default function SettingsPanel({
                 onClick={() => {
                   setIsReciterOpen(!isReciterOpen);
                   setIsTranslationOpen(false);
+                  setIsFontOpen(false);
+                  setIsTafsirSourceOpen(false);
+                  setIsReciterBOpen(false);
                 }}
                 className="w-full flex items-center justify-between rounded-xl border border-card-border bg-background px-3 py-2 text-sm text-foreground hover:border-primary/45 transition-all duration-200 cursor-pointer shadow-xs text-left"
               >
@@ -317,6 +349,65 @@ export default function SettingsPanel({
                         }`}
                       >
                         {reciter.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 3.5. Arabic Font Style Selector (Custom Dropdown) */}
+          <div className="flex flex-col gap-2 relative">
+            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              <FaFont className="text-primary h-3.5 w-3.5" />
+              {t("fontArabicStyle")}
+            </label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFontOpen(!isFontOpen);
+                  setIsTranslationOpen(false);
+                  setIsReciterOpen(false);
+                  setIsTafsirSourceOpen(false);
+                  setIsReciterBOpen(false);
+                }}
+                className="w-full flex items-center justify-between rounded-xl border border-card-border bg-background px-3 py-2 text-sm text-foreground hover:border-primary/45 transition-all duration-200 cursor-pointer shadow-xs text-left"
+              >
+                <span className="truncate">
+                  {arabicFont === "quran-uthmani" && t("fontUthmani")}
+                  {arabicFont === "hafs" && t("fontHafs")}
+                  {arabicFont === "naskh" && t("fontNaskh")}
+                  {arabicFont === "indopak" && t("fontIndopak")}
+                </span>
+                <span className="text-muted text-[10px] ml-2 shrink-0">▼</span>
+              </button>
+              
+              {isFontOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setIsFontOpen(false)} />
+                  <div className="absolute top-full left-0 right-0 mt-1 z-20 max-h-56 overflow-y-auto rounded-xl border border-card-border bg-card-bg p-1.5 shadow-xl select-none">
+                    {[
+                      { identifier: "quran-uthmani", nameKey: "fontUthmani" as const },
+                      { identifier: "hafs", nameKey: "fontHafs" as const },
+                      { identifier: "naskh", nameKey: "fontNaskh" as const },
+                      { identifier: "indopak", nameKey: "fontIndopak" as const },
+                    ].map((font) => (
+                      <button
+                        key={font.identifier}
+                        type="button"
+                        onClick={() => {
+                          setArabicFont(font.identifier);
+                          setIsFontOpen(false);
+                        }}
+                        className={`w-full text-left rounded-lg px-2.5 py-1.5 text-xs transition-colors cursor-pointer ${
+                          arabicFont === font.identifier
+                            ? "bg-primary text-white font-bold"
+                            : "text-foreground hover:bg-primary-glow hover:text-primary"
+                        }`}
+                      >
+                        {t(font.nameKey)}
                       </button>
                     ))}
                   </div>
@@ -487,6 +578,165 @@ export default function SettingsPanel({
                 />
               </div>
             </button>
+
+            {/* Duo Reciter Toggle */}
+            <button
+              onClick={() => setUseDuoReciter(!useDuoReciter)}
+              className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer ${
+                useDuoReciter
+                  ? "border-primary bg-primary-glow text-primary"
+                  : "border-card-border bg-background/50 text-muted hover:text-foreground hover:bg-card-bg/60"
+              }`}
+            >
+              <div className="text-left">
+                <span className="block font-bold">{t("useDuoReciter")}</span>
+                <span className="block text-[10px] text-muted leading-tight mt-0.5 max-w-[180px]">{t("duoReciterDesc")}</span>
+              </div>
+              <div
+                className={`relative flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300 p-0.5 ${
+                  useDuoReciter ? "bg-primary" : "bg-card-border"
+                }`}
+              >
+                <div
+                  className={`h-4 w-4 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    useDuoReciter ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Reciter B Selector (Custom Dropdown) - visible only if Duo Reciter is enabled */}
+            {useDuoReciter && (
+              <div className="flex flex-col gap-2 relative mt-1 select-none animate-fade-in">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center gap-2">
+                  👤 {t("reciterBLabel")}
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsReciterBOpen(!isReciterBOpen);
+                      setIsTranslationOpen(false);
+                      setIsReciterOpen(false);
+                      setIsFontOpen(false);
+                      setIsTafsirSourceOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border border-card-border bg-background px-3 py-2 text-xs text-foreground hover:border-primary/45 transition-all duration-200 cursor-pointer shadow-xs text-left"
+                  >
+                    <span className="truncate font-medium">
+                      {POPULAR_RECITERS.find(r => r.identifier === selectedReciterB)?.name || selectedReciterB}
+                    </span>
+                    <span className="text-muted text-[10px] ml-2 shrink-0">▼</span>
+                  </button>
+                  
+                  {isReciterBOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsReciterBOpen(false)} />
+                      <div className="absolute bottom-full left-0 right-0 mb-1 z-20 max-h-56 overflow-y-auto rounded-xl border border-card-border bg-card-bg p-1.5 shadow-xl select-none">
+                        {POPULAR_RECITERS.map((reciter) => (
+                          <button
+                            key={reciter.identifier}
+                            type="button"
+                            onClick={() => {
+                              setSelectedReciterB(reciter.identifier);
+                              setIsReciterBOpen(false);
+                            }}
+                            className={`w-full text-left rounded-lg px-2.5 py-1.5 text-xs transition-colors cursor-pointer ${
+                              selectedReciterB === reciter.identifier
+                                ? "bg-primary text-white font-bold"
+                                : "text-foreground hover:bg-primary-glow hover:text-primary"
+                            }`}
+                          >
+                            {reciter.name}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Show Brief Tafsir Toggle */}
+            <button
+              onClick={() => setShowTafsirSingkat(!showTafsirSingkat)}
+              className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
+                showTafsirSingkat
+                  ? "border-primary bg-primary-glow text-primary"
+                  : "border-card-border bg-background/50 text-muted hover:text-foreground"
+              }`}
+            >
+              <span>{t("showTafsirSingkat")}</span>
+              <div
+                className={`relative flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300 p-0.5 ${
+                  showTafsirSingkat ? "bg-primary" : "bg-card-border"
+                }`}
+              >
+                <div
+                  className={`h-4 w-4 rounded-full bg-white shadow-md transition-all duration-300 ${
+                    showTafsirSingkat ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Tafsir Source Dropdown (visible only if brief tafsir is enabled) */}
+            {showTafsirSingkat && (
+              <div className="flex flex-col gap-2 relative mt-1 select-none animate-fade-in">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center gap-2">
+                  📖 {t("tafsirSourceLabel")}
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTafsirSourceOpen(!isTafsirSourceOpen);
+                      setIsTranslationOpen(false);
+                      setIsReciterOpen(false);
+                      setIsFontOpen(false);
+                      setIsReciterBOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border border-card-border bg-background px-3 py-2 text-xs text-foreground hover:border-primary/45 transition-all duration-200 cursor-pointer shadow-xs text-left"
+                  >
+                    <span className="truncate font-medium">
+                      {selectedTafsirSource === "kemenag" && t("tafsirKemenag")}
+                      {selectedTafsirSource === "jalalain" && t("tafsirJalalayn")}
+                      {selectedTafsirSource === "ibnkathir" && t("tafsirIbnKathir")}
+                    </span>
+                    <span className="text-muted text-[10px] ml-2 shrink-0">▼</span>
+                  </button>
+                  
+                  {isTafsirSourceOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsTafsirSourceOpen(false)} />
+                      <div className="absolute bottom-full left-0 right-0 mb-1 z-20 max-h-56 overflow-y-auto rounded-xl border border-card-border bg-card-bg p-1.5 shadow-xl select-none">
+                        {[
+                          { identifier: "kemenag", nameKey: "tafsirKemenag" as const },
+                          { identifier: "jalalain", nameKey: "tafsirJalalayn" as const },
+                          { identifier: "ibnkathir", nameKey: "tafsirIbnKathir" as const },
+                        ].map((source) => (
+                          <button
+                            key={source.identifier}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTafsirSource(source.identifier);
+                              setIsTafsirSourceOpen(false);
+                            }}
+                            className={`w-full text-left rounded-lg px-2.5 py-1.5 text-xs transition-colors cursor-pointer ${
+                              selectedTafsirSource === source.identifier
+                                ? "bg-primary text-white font-bold"
+                                : "text-foreground hover:bg-primary-glow hover:text-primary"
+                            }`}
+                          >
+                            {t(source.nameKey)}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           
         </div>
