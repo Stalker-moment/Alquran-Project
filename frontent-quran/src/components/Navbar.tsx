@@ -5,17 +5,19 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FaBookOpen, FaMoon, FaSun, FaBars, FaTimes, FaGlobe, FaChevronDown } from "react-icons/fa";
-import { useLanguage } from "@/context/LanguageContext";
+import { useLanguage, UI_TRANSLATIONS } from "@/context/LanguageContext";
 
 // ── Nav Config ─────────────────────────────────────────────────────────────
-const PRIMARY_NAV = [
+type NavKey = keyof typeof UI_TRANSLATIONS.id;
+
+const PRIMARY_NAV: { href: string; labelKey: NavKey; icon: string }[] = [
   { href: "/quran", labelKey: "navSurah",    icon: "📖" },
   { href: "/doa",   labelKey: "navDoa",      icon: "🙏" },
   { href: "/shalat",labelKey: "navShalat",   icon: "🕌" },
   { href: "/cari",  labelKey: "navCari",     icon: "🔍" },
 ];
 
-const MORE_NAV = [
+const MORE_NAV: { href: string; labelKey: NavKey; icon: string }[] = [
   { href: "/progress",    labelKey: "navProgress",    icon: "📊" },
   { href: "/hafalan",     labelKey: "navHafalan",     icon: "🧠" },
   { href: "/bookmark",    labelKey: "navBookmark",    icon: "🔖" },
