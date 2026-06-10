@@ -23,6 +23,7 @@ const MORE_NAV: { href: string; labelKey: NavKey; icon: string }[] = [
   { href: "/bookmark",    labelKey: "navBookmark",    icon: "🔖" },
   { href: "/downloads",   labelKey: "navDownloads",   icon: "📥" },
   { href: "/asmaul-husna",labelKey: "navAsmaulHusna", icon: "☪️" },
+  { href: "/dzikir",      labelKey: "navDzikir",      icon: "📿" },
 ];
 
 // ── Component ───────────────────────────────────────────────────────────────

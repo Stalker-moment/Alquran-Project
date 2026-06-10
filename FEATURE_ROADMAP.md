@@ -300,13 +300,13 @@ Albayan Radio       : http://albayan-radio.com:8000/
 
 ```
 Sesi 1 (besok):
-  [1] PWA Installable           ← Impact tinggi, user experience langsung terasa
-  [2] Push Notification Shalat  ← Sangat berguna, lengkap dengan PWA
+  [x] [1] PWA Installable           ← Selesai ✅
+  [x] [2] Push Notification Shalat  ← Selesai ✅
 
 Sesi 2:
-  [6] Qibla Finder              ← Fitur shalat yang melengkapi
-  [7] Kalender Hijriah          ← Widget informasi bermanfaat
-  [8] Dzikir Counter            ← Fitur harian, simpel tapi powerful
+  [x] [6] Qibla Finder              ← Selesai ✅
+  [x] [7] Kalender Hijriah          ← Selesai ✅
+  [x] [8] Dzikir Counter            ← Selesai ✅ (Dikerjakan sesi ini)
 
 Sesi 3:
   [3] Statistik Lanjutan        ← Heatmap & grafik yang visual

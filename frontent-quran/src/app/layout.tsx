@@ -39,10 +39,18 @@ const outfit = Outfit({
   display: "swap",
 });
 
+import PWARegister from "./PWARegister";
+
 export const metadata: Metadata = {
   title: "Al-Qur'an Al-Kareem | Modern Quran Viewer",
   description: "Read, search, and listen to the Holy Quran with audio recitation (murottal), multi-language translations, auto-scroll, and modern reading themes.",
   keywords: ["Quran", "Al-Quran", "Quran Online", "Murottal", "Auto Scroll Quran", "Quran Translation"],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Al-Qur'an Al-Kareem",
+  },
 };
 
 export default function RootLayout({
@@ -57,10 +65,15 @@ export default function RootLayout({
       data-theme="dark"
       suppressHydrationWarning
     >
+      <head>
+        <meta name="theme-color" content="#0b0f19" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body
         className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300"
         suppressHydrationWarning
       >
+        <PWARegister />
         <LanguageProvider>
           <ToastProvider>
             {children}
@@ -71,3 +84,4 @@ export default function RootLayout({
     </html>
   );
 }
+

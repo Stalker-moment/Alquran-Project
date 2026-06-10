@@ -18,7 +18,7 @@
 
 ---
 
-## ✨ Fitur Unggulan (16+ Fitur)
+## ✨ Fitur Unggulan (30+ Fitur)
 
 | Fitur | Deskripsi |
 |-------|-----------|
@@ -42,12 +42,18 @@
 | 🔀 **Duo Reciter** | Dengarkan 2 Qori bergantian per ayat untuk belajar makhraj |
 | 🧠 **Asisten Hafalan** | Flashcard, cloze test, mode sembunyi penuh — hafalan mandiri |
 | 📥 **Audio Offline** | Download murottal surah untuk diputar tanpa koneksi internet |
+| 📱 **PWA Installable** | PWA installable ke layar utama HP/desktop & service worker cache offline penuh |
+| 🔔 **Notifikasi Shalat** | Pengingat browser push notification otomatis tepat waktu shalat tiba |
+| 📿 **Tasbih Digital** | Tasbih digital interaktif dengan target getar, efek suara klik, kalimat custom, dan riwayat harian |
+| 🗺️ **Kompas Arah Kiblat** | Arah kiblat sensor kompas (gyroscope/vibrate) + simulasi manual desktop |
+| 📅 **Kalender Hijriah** | Penampil Hijriah hari ini, konverter Masehi-Hijriah offline & hari penting Islam |
 | 🕌 **Jadwal Shalat** | Jadwal shalat + imsakiyah se-Indonesia, GPS, peta interaktif |
 | 🙏 **Doa Harian** | Kumpulan doa shahih lengkap dengan referensi hadits |
 | ☪️ **Asmaul Husna** | 99 nama Allah dengan arti 4 bahasa, keutamaan, referensi Qur'an |
 | 📊 **Progress Tadarus** | Statistik bacaan, streak harian, completion 114 surah |
 | 🔍 **Pencarian Global** | Cari ayat berdasarkan kata kunci di seluruh Al-Qur'an |
 | ⚖️ **Legal Pages** | Terms of Service, Privacy Policy, Cookie Policy |
+
 
 ---
 
@@ -60,6 +66,7 @@
 - **Halaman Baca Juz** — Navigasi per Juz 1–30 dengan layout pembacaan yang sama
 - **Halaman Shalat** — Jadwal shalat harian + bulanan + imsakiyah + peta GPS
 - **Halaman Doa** — Kategorisasi doa, animasi flip card
+- **Halaman Dzikir** — Tasbih digital interaktif dengan haptic feedback (getar), sound, kalimat custom, dan log riwayat sesi harian
 - **Halaman Hafalan** — Flashcard interaktif + cloze test + statistik
 - **Halaman Progress** — Heatmap surah, streak harian, statistik lengkap
 - **Halaman Downloads** — Pengelola audio offline dengan progress bar
@@ -102,10 +109,12 @@ Alquran-Project/
         │   ├── page.tsx                # Landing page utama
         │   ├── layout.tsx              # Root layout & provider
         │   ├── globals.css             # Design system & Tajwid colors
+        │   ├── PWARegister.tsx         # Registrasi PWA Service Worker
         │   ├── surah/[number]/         # Halaman baca per surah
         │   ├── juz/[number]/           # Halaman baca per juz
-        │   ├── shalat/                 # Jadwal shalat & imsakiyah
+        │   ├── shalat/                 # Jadwal shalat, imsakiyah & Kiblat
         │   ├── doa/                    # Kumpulan doa harian
+        │   ├── dzikir/                 # Tasbih digital (Dzikir Counter)
         │   ├── hafalan/                # Mode hafalan mandiri
         │   ├── progress/               # Progress tadarus tracker
         │   ├── downloads/              # Audio offline manager
@@ -121,8 +130,10 @@ Alquran-Project/
         │   ├── CustomSelect.tsx        # Portal-based select dropdown
         │   ├── FlashCard.tsx           # Hafalan flashcard
         │   ├── Footer.tsx              # Premium footer component
+        │   ├── HijriWidget.tsx         # Widget tanggal Hijriah & konverter
         │   ├── MapPicker.tsx           # GPS prayer time map
         │   ├── Navbar.tsx              # Modern glassmorphism navbar
+        │   ├── QiblaCompass.tsx        # Kompas arah kiblat interaktif
         │   ├── SettingsPanel.tsx       # Slide-out settings panel
         │   ├── ShareModal.tsx          # Verse share card generator
         │   ├── SurahCard.tsx           # Surah list card
@@ -135,8 +146,12 @@ Alquran-Project/
         │
         └── utils/
             ├── api.ts                  # API functions & TypeScript interfaces
+            ├── hijri.ts                # Kalkulasi & penanggalan Hijriah
+            ├── notification.ts         # Notifikasi push shalat
             ├── offline.ts              # Offline audio download & cache
+            ├── qibla.ts                # Kalkulasi sudut arah kiblat
             └── progress.ts             # Reading progress & streak logic
+
 ```
 
 ---

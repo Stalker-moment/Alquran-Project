@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getRandomInspirationalAyah, QuoteAyah, getSurahs } from "@/utils/api";
+import { calculateLocalHijri } from "@/utils/hijri";
 import { useLanguage } from "@/context/LanguageContext";
 import { animate, stagger } from "animejs";
 import {
@@ -53,10 +54,10 @@ const ACTIVE_FEATURES: Feature[] = [
   },
   {
     icon: <FaMoon />,
-    title_id: "Jadwal Shalat & GPS",
-    title_en: "Prayer Times & GPS",
-    desc_id: "Jadwal shalat + imsakiyah Ramadhan akurat se-Indonesia dengan deteksi GPS dan peta interaktif.",
-    desc_en: "Accurate prayer + Ramadhan imsakiyah schedules for Indonesia with GPS detection and interactive map.",
+    title_id: "Jadwal Shalat, Kiblat & Hijriah",
+    title_en: "Prayer, Qibla & Hijriah",
+    desc_id: "Jadwal shalat + imsakiyah se-Indonesia dengan deteksi GPS, kompas arah kiblat interaktif (gyroscope/vibrate), serta kalender Hijriah & konverter tanggal offline.",
+    desc_en: "Accurate prayer + imsakiyah schedules, real-time Qibla compass (gyro/vibrate), and Hijri calendar with offline converter.",
     gradient: "from-yellow-500/20 to-amber-500/10",
   },
   {
@@ -163,6 +164,22 @@ const ACTIVE_FEATURES: Feature[] = [
     desc_en: "Search verses across the entire Quran by keyword in Arabic or translation.",
     gradient: "from-blue-500/20 to-indigo-500/10",
   },
+  {
+    icon: <MdOutlineWifi />,
+    title_id: "PWA Installable App",
+    title_en: "Installable PWA",
+    desc_id: "Install aplikasi langsung ke layar utama HP atau desktop untuk akses super cepat dan dukungan offline penuh.",
+    desc_en: "Install the app directly to your home screen or desktop for fast loading and full offline support.",
+    gradient: "from-purple-500/20 to-violet-500/10",
+  },
+  {
+    icon: <MdOutlineNotifications />,
+    title_id: "Notifikasi Waktu Shalat",
+    title_en: "Prayer Time Notifications",
+    desc_id: "Dapatkan pengingat push browser otomatis tepat waktu ketika waktu shalat tiba.",
+    desc_en: "Receive automatic browser push notifications right on time when prayer times arrive.",
+    gradient: "from-emerald-500/20 to-teal-500/10",
+  },
 ];
 
 type ComingSoon = {
@@ -174,20 +191,6 @@ type ComingSoon = {
 };
 
 const COMING_SOON_FEATURES: ComingSoon[] = [
-  {
-    icon: <MdOutlineWifi />,
-    title_id: "PWA Installable App",
-    title_en: "Installable PWA",
-    desc_id: "Install aplikasi langsung ke layar utama HP atau desktop tanpa melalui Play Store atau App Store.",
-    desc_en: "Install the app directly to your home screen or desktop without going through Play Store or App Store."
-  },
-  {
-    icon: <MdOutlineNotifications />,
-    title_id: "Notifikasi Waktu Shalat",
-    title_en: "Prayer Time Notifications",
-    desc_id: "Dapatkan notifikasi push otomatis di browser 5 menit sebelum waktu shalat tiba.",
-    desc_en: "Receive automatic browser push notifications 5 minutes before each prayer time."
-  },
   {
     icon: <MdOutlineAnalytics />,
     title_id: "Statistik Tadarus Lanjutan",
@@ -228,6 +231,14 @@ export default function LandingPage() {
 
   const [stats, setStats] = useState<{ totalVersesRead: number; totalPercent: number; completedSurahs: number; inProgressSurahs: number } | null>(null);
   const [streak, setStreak] = useState<number>(0);
+  const [hijriTodayStr, setHijriTodayStr] = useState<string>("");
+
+  useEffect(() => {
+    const today = new Date();
+    const res = calculateLocalHijri(today);
+    setHijriTodayStr(`${res.day} ${language === "id" ? res.monthNameId : res.monthNameEn} ${res.year} H`);
+  }, [language]);
+
 
   // Fetch a random inspirational ayah
   const loadQuote = async () => {
@@ -321,10 +332,19 @@ export default function LandingPage() {
         </div>
 
         {/* Badge */}
-        <div className="hero-anim opacity-0 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary-glow/60 px-4 py-1.5 text-xs font-semibold text-primary mb-6 shadow-sm">
-          <HiOutlineSparkles className="h-3.5 w-3.5" />
-          {language === "id" ? "Gratis Selamanya · Tanpa Iklan" : "Free Forever · No Ads"}
+        <div className="flex flex-wrap justify-center gap-3 mb-6">
+          <div className="hero-anim opacity-0 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary-glow/60 px-4 py-1.5 text-xs font-semibold text-primary shadow-sm">
+            <HiOutlineSparkles className="h-3.5 w-3.5" />
+            {language === "id" ? "Gratis Selamanya · Tanpa Iklan" : "Free Forever · No Ads"}
+          </div>
+          {hijriTodayStr && (
+            <div className="hero-anim opacity-0 inline-flex items-center gap-2 rounded-full border border-card-border bg-card-bg/40 px-4 py-1.5 text-xs font-bold text-foreground shadow-sm">
+              <span>📅</span>
+              <span>{hijriTodayStr}</span>
+            </div>
+          )}
         </div>
+
 
         {/* Main Heading */}
         <h1 className="hero-anim opacity-0 max-w-4xl text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-foreground leading-tight mb-6">

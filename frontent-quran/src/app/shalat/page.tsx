@@ -2,6 +2,10 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
+import QiblaCompass from "@/components/QiblaCompass";
+import HijriWidget from "@/components/HijriWidget";
+
+
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/context/ToastContext";
 import MapPicker from "@/components/MapPicker";
@@ -28,15 +32,19 @@ import {
   FaVolumeMute,
   FaCrosshairs,
   FaMap,
+  FaBell,
+  FaBellSlash,
 } from "react-icons/fa";
 import { MdOutlineTimer, MdOutlineAccessTime } from "react-icons/md";
 import { animate, stagger } from "animejs";
+import { requestNotificationPermission, checkAndScheduleNotifications } from "@/utils/notification";
 
 export default function ShalatPage() {
   const { t, language } = useLanguage();
   const { showToast } = useToast();
-  const [mode, setMode] = useState<"shalat" | "imsakiyah">("shalat");
+  const [mode, setMode] = useState<"shalat" | "imsakiyah" | "qibla">("shalat");
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
   // Selection states
   const [provinsiList, setProvinsiList] = useState<string[]>([]);
@@ -47,16 +55,33 @@ export default function ShalatPage() {
 
   // Initialize from localStorage on mount
   useEffect(() => {
-    const savedMode = localStorage.getItem("last_mode") as "shalat" | "imsakiyah" | null;
+    const savedMode = localStorage.getItem("last_mode") as "shalat" | "imsakiyah" | "qibla" | null;
     const savedProv = localStorage.getItem("last_provinsi");
     const savedKab = localStorage.getItem("last_kabkota");
+    const savedNotif = localStorage.getItem("prayer_notifications") === "true";
+    const savedLat = localStorage.getItem("last_lat");
+    const savedLng = localStorage.getItem("last_lng");
 
     if (savedMode) setMode(savedMode);
     if (savedProv) setSelectedProvinsi(savedProv);
     if (savedKab) setSelectedKabKota(savedKab);
     
+    if (savedLat && savedLng) {
+      setCoordinates({ lat: Number(savedLat), lng: Number(savedLng) });
+    }
+    
+    if (savedNotif && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "granted") {
+        setNotificationsEnabled(true);
+      } else {
+        localStorage.setItem("prayer_notifications", "false");
+      }
+    }
+    
     setIsInitialized(true);
   }, []);
+
+
 
   // Search filter states
   const [provSearch, setProvSearch] = useState<string>("");
@@ -73,6 +98,7 @@ export default function ShalatPage() {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [nextPrayer, setNextPrayer] = useState<{ name: string; time: string; date: Date } | null>(null);
   const [countdownStr, setCountdownStr] = useState<string>("");
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
 
   const getTimezoneAbbreviation = (): string => {
     try {
@@ -201,9 +227,13 @@ export default function ShalatPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        setCoordinates({ lat: latitude, lng: longitude });
+        localStorage.setItem("last_lat", String(latitude));
+        localStorage.setItem("last_lng", String(longitude));
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=id`,
+
             { headers: { "User-Agent": "Alquran-Project-Client" } }
           );
           if (!res.ok) throw new Error("Reverse geocoding HTTP error " + res.status);
@@ -253,6 +283,9 @@ export default function ShalatPage() {
     setShowMapPicker(false);
     try {
       setGpsLoading(true);
+      setCoordinates({ lat, lng });
+      localStorage.setItem("last_lat", String(lat));
+      localStorage.setItem("last_lng", String(lng));
       const { prov, city } = await applyAddressToSelectors(address);
       showToast(
         `${prov} – ${city}`,
@@ -486,6 +519,44 @@ export default function ShalatPage() {
 
   const todaySchedule = getTodaySchedule();
 
+  const handleToggleNotifications = async () => {
+    if (!notificationsEnabled) {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setNotificationsEnabled(true);
+        localStorage.setItem("prayer_notifications", "true");
+        showToast(
+          t("notificationActive"),
+          "success",
+          language === "id" ? "Notifikasi Aktif" : "Notifications Active"
+        );
+      } else {
+        showToast(
+          language === "id"
+            ? "Izin notifikasi ditolak oleh browser. Silakan aktifkan di pengaturan browser."
+            : "Notification permission denied. Please enable in browser settings.",
+          "error",
+          language === "id" ? "Izin Ditolak" : "Permission Denied"
+        );
+      }
+    } else {
+      setNotificationsEnabled(false);
+      localStorage.setItem("prayer_notifications", "false");
+      showToast(
+        t("notificationDisabled"),
+        "info",
+        language === "id" ? "Notifikasi Mati" : "Notifications Disabled"
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (notificationsEnabled && todaySchedule) {
+      checkAndScheduleNotifications(todaySchedule, t);
+    }
+  }, [currentTime, notificationsEnabled, todaySchedule, t]);
+
+
   // Calculate Countdown to Next Prayer
   useEffect(() => {
     if (!todaySchedule) {
@@ -637,34 +708,48 @@ export default function ShalatPage() {
         <div className="anim-fade grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 relative z-30">
           
           {/* Mode Tabs */}
-          <div className="flex rounded-2xl border border-card-border bg-card-bg/40 p-1 shadow-xs h-[54px] items-center">
+          <div className="flex rounded-2xl border border-card-border bg-card-bg/40 p-1 shadow-xs h-[54px] items-center col-span-1">
             <button
               onClick={() => {
                 setMode("shalat");
                 localStorage.setItem("last_mode", "shalat");
               }}
-              className={`flex-1 h-full text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 cursor-pointer ${
+              className={`flex-1 h-full text-[11px] sm:text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer ${
                 mode === "shalat"
                   ? "bg-primary text-white shadow-md shadow-primary-glow"
                   : "text-muted hover:text-foreground"
               }`}
             >
-              {t("shalatBulanIni").split(" ")[2] || t("shalatTab")}
+              {t("shalatTab")}
             </button>
             <button
               onClick={() => {
                 setMode("imsakiyah");
                 localStorage.setItem("last_mode", "imsakiyah");
               }}
-              className={`flex-1 h-full text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 cursor-pointer ${
+              className={`flex-1 h-full text-[11px] sm:text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer ${
                 mode === "imsakiyah"
                   ? "bg-primary text-white shadow-md shadow-primary-glow"
                   : "text-muted hover:text-foreground"
               }`}
             >
-              {t("imsakiyahTab")} (Ramadhan)
+              {t("imsakiyahTab")}
+            </button>
+            <button
+              onClick={() => {
+                setMode("qibla");
+                localStorage.setItem("last_mode", "qibla");
+              }}
+              className={`flex-1 h-full text-[11px] sm:text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer ${
+                mode === "qibla"
+                  ? "bg-primary text-white shadow-md shadow-primary-glow"
+                  : "text-muted hover:text-foreground"
+              }`}
+            >
+              {t("qiblaTitle")}
             </button>
           </div>
+
 
           {/* Searchable Province Dropdown */}
           <div ref={provDropdownRef} className="relative z-30">
@@ -817,6 +902,13 @@ export default function ShalatPage() {
           />
         )}
 
+        {/* Hijri Calendar Section */}
+        {!loading && (
+          <div className="anim-fade mb-10">
+            <HijriWidget />
+          </div>
+        )}
+
         {/* Loading Spinner */}
         {loading && (
           <div className="flex justify-center items-center py-20">
@@ -825,7 +917,7 @@ export default function ShalatPage() {
         )}
 
         {/* Content View: Countdown & Schedules */}
-        {!loading && jadwal.length > 0 && (
+        {!loading && mode !== "qibla" && jadwal.length > 0 && (
           <div className="space-y-8">
             
             {/* Top Cards: Live Widget + Current Day Times */}
@@ -894,17 +986,42 @@ export default function ShalatPage() {
 
               {/* Today's Times Quick View Card */}
               <div className="lg:col-span-7 rounded-3xl border border-card-border bg-card-bg/60 p-6 md:p-8 flex flex-col justify-between shadow-xs backdrop-blur-md">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground mb-1.5 flex items-center gap-2 select-none">
-                    <FaSun className="text-primary animate-pulse" />
-                    {t("shalatHariIni")}
-                  </h2>
-                  <p className="text-xs text-muted mb-6">
-                    {language === "id"
-                      ? "Detail waktu ibadah dan pembagian waktu shalat hari ini."
-                      : "Detailed prayer times for today."}
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground mb-1.5 flex items-center gap-2 select-none">
+                      <FaSun className="text-primary animate-pulse" />
+                      {t("shalatHariIni")}
+                    </h2>
+                    <p className="text-xs text-muted">
+                      {language === "id"
+                        ? "Detail waktu ibadah dan pembagian waktu shalat hari ini."
+                        : "Detailed prayer times for today."}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleToggleNotifications}
+                    className={`flex h-11 items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-300 cursor-pointer select-none shadow-xs shrink-0 ${
+                      notificationsEnabled
+                        ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-500 shadow-md shadow-emerald-500/5 hover:bg-emerald-500/25"
+                        : "border-card-border bg-card-bg/50 text-muted hover:text-foreground hover:border-primary/30"
+                    }`}
+                    title={t("notificationPromptSub")}
+                  >
+                    {notificationsEnabled ? (
+                      <>
+                        <FaBell className="h-4 w-4 text-emerald-500 animate-swing" />
+                        <span>{t("notificationPrompt")} (ON)</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaBellSlash className="h-4 w-4 text-muted" />
+                        <span>{t("notificationPrompt")} (OFF)</span>
+                      </>
+                    )}
+                  </button>
                 </div>
+
 
                 {todaySchedule ? (
                   <div className="flex-1 flex flex-col justify-between">
@@ -1072,7 +1189,29 @@ export default function ShalatPage() {
 
           </div>
         )}
+
+        {/* Qibla Compass Tab content */}
+        {!loading && mode === "qibla" && (
+          <div className="max-w-xl mx-auto mt-4 animate-fade-in">
+            {coordinates ? (
+              <QiblaCompass latitude={coordinates.lat} longitude={coordinates.lng} />
+            ) : (
+              <div className="text-center py-20 border border-dashed border-card-border rounded-3xl bg-card-bg/25">
+                <span className="text-4xl block mb-4">📍</span>
+                <p className="text-sm font-semibold text-foreground mb-2">
+                  {t("qiblaChooseLocation")}
+                </p>
+                <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
+                  {language === "id"
+                    ? "Gunakan tombol GPS Otomatis atau pilih lokasi dari peta untuk mendapatkan koordinat lintang/bujur Anda."
+                    : "Use the Auto GPS button or pick a location from the map to retrieve your latitude/longitude coordinates."}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
 
       {/* Footer */}
       <footer className="border-t border-card-border py-8 mt-16 bg-card-bg/10 text-xs text-muted">
